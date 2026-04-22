@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import AdminLayoutWrapper from "@/components/AdminLayoutWrapper";
-import { getStats } from "@/services/adminService";
+import { getStats, getAuditStats } from "@/services/adminService";
 import { 
   Users, Mail, MessageSquare, TrendingUp, 
   ArrowUpRight, ArrowDownRight, ShieldCheck, Activity, ArrowRight
@@ -10,6 +11,7 @@ import {
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
+  const [auditStats, setAuditStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,8 +20,12 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
-      const res = await getStats();
-      setStats(res.data);
+      const [statsRes, auditRes] = await Promise.all([
+        getStats(),
+        getAuditStats()
+      ]);
+      setStats(statsRes.data);
+      setAuditStats(auditRes?.data || { success: 0, failure: 0, total: 0 });
     } catch (err) {
       console.error(err);
     } finally {
@@ -71,26 +77,31 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <Activity className="w-5 h-5 text-terracotta" />
-              <h2 className="text-2xl font-serif">Platform Velocity</h2>
+              <h2 className="text-2xl font-serif">Audit Activity</h2>
             </div>
             <select className="bg-warm-sand/20 border border-border-cream rounded-lg px-3 py-1 text-xs font-sans outline-none">
-              <option>Last 7 Days</option>
-              <option>Last 30 Days</option>
+              <option>All Time</option>
             </select>
           </div>
           
-          <div className="h-64 flex items-end gap-2 px-4 justify-between">
-            {[40, 70, 45, 90, 65, 80, 55, 75, 60, 85, 40, 95].map((h, i) => (
-              <div 
-                key={i} 
-                className="w-full bg-warm-sand/30 rounded-t-lg relative group transition-all hover:bg-terracotta/20"
-                style={{ height: `${h}%` }}
-              >
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-near-black text-ivory text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                  {h + 200}
-                </div>
+          <div className="h-64 flex items-end gap-6 px-12 justify-center">
+            
+            <div className="w-1/3 bg-green-500/80 rounded-t-lg relative group transition-all hover:bg-green-600/80 flex justify-center"
+                 style={{ height: `${Math.max(10, Math.min(100, (auditStats?.success / (auditStats?.total || 1)) * 100))}%` }}>
+              <div className="absolute bottom-full mb-2 bg-near-black text-ivory text-xs font-bold px-3 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap">
+                {auditStats?.success || 0} Successful
               </div>
-            ))}
+              <span className="absolute bottom-4 text-white font-mono text-xs hidden sm:block pointer-events-none">SUCCESS</span>
+            </div>
+            
+            <div className="w-1/3 bg-terracotta/80 rounded-t-lg relative group transition-all hover:bg-terracotta flex justify-center"
+                 style={{ height: `${Math.max(10, Math.min(100, (auditStats?.failure / (auditStats?.total || 1)) * 100))}%` }}>
+              <div className="absolute bottom-full mb-2 bg-near-black text-ivory text-xs font-bold px-3 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap">
+                {auditStats?.failure || 0} Failed
+              </div>
+              <span className="absolute bottom-4 text-white font-mono text-xs hidden sm:block pointer-events-none">FAILED</span>
+            </div>
+
           </div>
         </div>
 
@@ -99,27 +110,27 @@ export default function AdminDashboard() {
           <div className="relative z-10">
             <h2 className="text-2xl font-serif mb-6">Action Hub</h2>
             <div className="space-y-4">
-              <button className="w-full flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors group/btn">
+              <Link href="/newsletter" className="w-full flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors group/btn">
                 <div className="text-left">
                   <p className="text-sm font-medium">Broadcast</p>
                   <p className="text-[10px] opacity-40 uppercase tracking-widest">Newsletter</p>
                 </div>
                 <ArrowRight className="w-4 h-4 text-terracotta group-hover/btn:translate-x-1 transition-transform" />
-              </button>
-              <button className="w-full flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors group/btn">
+              </Link>
+              <Link href="/users" className="w-full flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors group/btn">
                 <div className="text-left">
                   <p className="text-sm font-medium">Review Users</p>
                   <p className="text-[10px] opacity-40 uppercase tracking-widest">Compliance</p>
                 </div>
                 <ArrowRight className="w-4 h-4 text-terracotta group-hover/btn:translate-x-1 transition-transform" />
-              </button>
-              <button className="w-full flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors group/btn">
+              </Link>
+              <Link href="/inquiries" className="w-full flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors group/btn">
                 <div className="text-left">
-                  <p className="text-sm font-medium">Clear Cache</p>
-                  <p className="text-[10px] opacity-40 uppercase tracking-widest">Maintenance</p>
+                  <p className="text-sm font-medium">Support</p>
+                  <p className="text-[10px] opacity-40 uppercase tracking-widest">Inquiries</p>
                 </div>
-                <Activity className="w-4 h-4 text-terracotta" />
-              </button>
+                <ArrowRight className="w-4 h-4 text-terracotta group-hover/btn:translate-x-1 transition-transform" />
+              </Link>
             </div>
           </div>
           <p className="text-xs opacity-40 font-serif italic mt-12 relative z-10">All signals normal.</p>

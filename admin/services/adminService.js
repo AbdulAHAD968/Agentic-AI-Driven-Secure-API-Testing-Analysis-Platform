@@ -78,6 +78,15 @@ export const getStats = async () => {
   return response.data;
 };
 
+export const getAuditStats = async () => {
+  const customApi = axios.create({
+    baseURL: "http://localhost:5000/api/v1/audit",
+    withCredentials: true,
+  });
+  const response = await customApi.get("/stats");
+  return response.data;
+};
+
 
 export const getUsers = async () => {
   const response = await api.get("/users");
