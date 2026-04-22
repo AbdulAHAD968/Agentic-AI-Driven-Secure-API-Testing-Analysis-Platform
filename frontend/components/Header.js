@@ -16,8 +16,8 @@ export default function Header() {
 
   useEffect(() => {
     checkAuth();
-    
-    
+
+
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setDropdownOpen(false);
@@ -56,10 +56,10 @@ export default function Header() {
     <header className="sticky top-0 z-50 bg-parchment/80 backdrop-blur-md border-b border-border-cream">
       <nav className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         <Link href="/" className="text-2xl font-serif font-bold tracking-tight text-near-black">
-          DevSecOps AI Platform
+          Topic AI
         </Link>
 
-        
+
         <div className="hidden md:flex items-center gap-8">
           {user ? (
             <>
@@ -82,64 +82,64 @@ export default function Header() {
             <div className="flex items-center gap-4">
               <NotificationBell />
               <div className="relative" ref={dropdownRef}>
-                <button 
+                <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="flex items-center gap-3 pl-4 border-l border-border-cream group"
                 >
-                <div className="w-10 h-10 rounded-full bg-warm-sand/30 border border-border-cream overflow-hidden transition-transform group-hover:scale-105">
-                  {user.avatar ? (
-                    <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-terracotta font-serif font-bold">
-                      {user.name.charAt(0)}
-                    </div>
-                  )}
-                </div>
-                <div className="text-left hidden lg:block">
-                  <p className="text-sm font-semibold text-near-black leading-tight">{user.name}</p>
-                  <p className="text-[10px] uppercase tracking-widest text-olive-gray font-bold">{user.role}</p>
-                </div>
-                <ChevronDown className={`w-4 h-4 text-stone-gray transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              
-              {dropdownOpen && (
-                <div className="absolute right-0 mt-3 w-56 bg-ivory border border-border-cream rounded-2xl shadow-whisper py-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="px-4 py-3 border-b border-border-cream/50 lg:hidden">
-                    <p className="text-sm font-semibold text-near-black">{user.name}</p>
-                    <p className="text-xs text-olive-gray">{user.role}</p>
+                  <div className="w-10 h-10 rounded-full bg-warm-sand/30 border border-border-cream overflow-hidden transition-transform group-hover:scale-105">
+                    {user.avatar ? (
+                      <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-terracotta font-serif font-bold">
+                        {user.name.charAt(0)}
+                      </div>
+                    )}
                   </div>
-                  <Link 
-                    href="/dashboard" 
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-near-black hover:bg-warm-sand/20 transition-colors"
-                    onClick={() => setDropdownOpen(false)}
-                  >
-                    <ShieldCheck className="w-4 h-4 text-stone-gray" /> Dashboard
-                  </Link>
-                  <Link 
-                    href="/notifications" 
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-near-black hover:bg-warm-sand/20 transition-colors"
-                    onClick={() => setDropdownOpen(false)}
-                  >
-                    <Bell className="w-4 h-4 text-stone-gray" /> Notifications
-                  </Link>
-                  <Link 
-                    href="/settings" 
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-near-black hover:bg-warm-sand/20 transition-colors"
-                    onClick={() => setDropdownOpen(false)}
-                  >
-                    <Settings className="w-4 h-4 text-stone-gray" /> Settings
-                  </Link>
-                  <button 
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors border-t border-border-cream/50 mt-1"
-                  >
-                    <LogOut className="w-4 h-4" /> Logout
-                  </button>
-                </div>
-              )}
+                  <div className="text-left hidden lg:block">
+                    <p className="text-sm font-semibold text-near-black leading-tight">{user.name}</p>
+                    <p className="text-[10px] uppercase tracking-widest text-olive-gray font-bold">{user.role}</p>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-stone-gray transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+
+                {dropdownOpen && (
+                  <div className="absolute right-0 mt-3 w-56 bg-ivory border border-border-cream rounded-2xl shadow-whisper py-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="px-4 py-3 border-b border-border-cream/50 lg:hidden">
+                      <p className="text-sm font-semibold text-near-black">{user.name}</p>
+                      <p className="text-xs text-olive-gray">{user.role}</p>
+                    </div>
+                    <Link
+                      href="/dashboard"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-near-black hover:bg-warm-sand/20 transition-colors"
+                      onClick={() => setDropdownOpen(false)}
+                    >
+                      <ShieldCheck className="w-4 h-4 text-stone-gray" /> Dashboard
+                    </Link>
+                    <Link
+                      href="/notifications"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-near-black hover:bg-warm-sand/20 transition-colors"
+                      onClick={() => setDropdownOpen(false)}
+                    >
+                      <Bell className="w-4 h-4 text-stone-gray" /> Notifications
+                    </Link>
+                    <Link
+                      href="/settings"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-near-black hover:bg-warm-sand/20 transition-colors"
+                      onClick={() => setDropdownOpen(false)}
+                    >
+                      <Settings className="w-4 h-4 text-stone-gray" /> Settings
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors border-t border-border-cream/50 mt-1"
+                    >
+                      <LogOut className="w-4 h-4" /> Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
           ) : (
             <div className="flex items-center gap-6">
               <Link href="/login" className="text-sm font-medium text-near-black hover:text-terracotta transition-colors">

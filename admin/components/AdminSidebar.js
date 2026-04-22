@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { 
   LayoutDashboard, Users, Mail, MessageSquare, 
   Settings, ShieldAlert, LogOut, ChevronLeft, ChevronRight,
-  Bell
+  Bell, FolderGit2, ClipboardList
 } from "lucide-react";
 import { logout } from "@/services/adminService";
 import { toast } from "react-hot-toast";
@@ -17,6 +17,9 @@ export default function AdminSidebar({ isCollapsed, setIsCollapsed }) {
   const menuItems = [
     { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
     { label: "Users", icon: Users, href: "/users" },
+    { label: "Projects", icon: FolderGit2, href: "/projects" },
+    { label: "Vulnerabilities", icon: ShieldAlert, href: "/vulnerabilities" },
+    { label: "Audit Logs", icon: ClipboardList, href: "/audit" },
     { label: "Newsletter", icon: Mail, href: "/newsletter" },
     { label: "Notifications", icon: Bell, href: "/notifications" },
     { label: "Inquiries", icon: MessageSquare, href: "/inquiries" },

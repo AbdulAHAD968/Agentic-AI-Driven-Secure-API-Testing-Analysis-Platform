@@ -103,6 +103,21 @@ export const deleteUser = async (id) => {
   return response.data;
 };
 
+export const getAllAdminProjects = async () => {
+  const response = await api.get("/projects");
+  return response.data;
+};
+
+export const getAllAdminVulnerabilities = async () => {
+  const response = await api.get("/vulnerabilities");
+  return response.data;
+};
+
+
+export const getAdminAuditLogs = async () => {
+  const response = await api.get("/logs");
+  return response.data;
+};
 
 export const getSubscribers = async () => {
   const response = await api.get("/newsletter");

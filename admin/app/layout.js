@@ -27,6 +27,8 @@ export const metadata = {
   },
 };
 
+import RootLayoutWrapper from "@/components/RootLayoutWrapper";
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${newsreader.variable} ${inter.variable} ${jetbrainsMono.variable} antialiased selection:bg-terracotta/20`}>
@@ -44,7 +46,9 @@ export default function RootLayout({ children }) {
             },
           }}
         />
-        {children}
+        <RootLayoutWrapper>
+          {children}
+        </RootLayoutWrapper>
       </body>
     </html>
   );

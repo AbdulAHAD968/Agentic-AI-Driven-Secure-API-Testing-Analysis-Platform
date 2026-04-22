@@ -257,3 +257,54 @@ exports.purgeAuditLogs = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+exports.getAllProjects = async (req, res) => {
+  try {
+    const Project = require("../models/Project");
+    const Vulnerability = require("../models/Vulnerability");
+    
+    const projects = await Project.find()
+      .populate("user", "name email")
+      .select("-__v")
+      .sort("-createdAt");
+      
+    // Calculate summaries
+    const projectsWithSummary = await Promise.all(projects.map(async (project) => {
+      const findings = await Vulnerability.find({ project: project._id });
+      return {
+        ...project.toObject(),
+        findingsSummary: {
+          critical: findings.filter(f => f.severity === "Critical").length,
+          high: findings.filter(f => f.severity === "High").length,
+          medium: findings.filter(f => f.severity === "Medium").length,
+          low: findings.filter(f => f.severity === "Low").length,
+          info: findings.filter(f => f.severity === "Info").length
+        }
+      };
+    }));
+
+    res.status(200).json({ success: true, data: projectsWithSummary });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.getAllVulnerabilities = async (req, res) => {
+  try {
+    const Vulnerability = require("../models/Vulnerability");
+    const vulnerabilities = await Vulnerability.find()
+      .populate({
+        path: 'project',
+        select: 'name user',
+        populate: { path: 'user', select: 'name email' }
+      })
+      .select("-__v")
+      .sort("-createdAt")
+      .limit(1000); // Prevent massive payloads if many vulns
+
+    res.status(200).json({ success: true, data: vulnerabilities });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+

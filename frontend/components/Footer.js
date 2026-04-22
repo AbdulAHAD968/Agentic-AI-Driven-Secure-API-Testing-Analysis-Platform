@@ -31,13 +31,13 @@ export default function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-12 mb-20">
           <div className="col-span-2">
             <Link href="/" className="text-2xl font-serif font-semibold text-near-black mb-6 block">
-              DevSecOps AI Platform
+              Topic AI
             </Link>
             <p className="text-olive-gray max-w-sm leading-relaxed mb-8">
               Securing APIs during development. AI-powered SAST/DAST, encrypted storage, and automated vulnerability scanning for modern DevSecOps.
             </p>
           </div>
-          
+
           <div>
             <h4 className="text-sm font-semibold text-near-black uppercase tracking-wider mb-6">Product</h4>
             <ul className="space-y-4">
@@ -47,7 +47,7 @@ export default function Footer() {
               <li><Link href="/docs" className="text-olive-gray hover:text-terracotta transition-colors">Documentation</Link></li>
             </ul>
           </div>
-          
+
           <div>
             <h4 className="text-sm font-semibold text-near-black uppercase tracking-wider mb-6">Company</h4>
             <ul className="space-y-4">
@@ -56,7 +56,7 @@ export default function Footer() {
               <li><Link href="/contact" className="text-olive-gray hover:text-terracotta transition-colors">Contact</Link></li>
             </ul>
           </div>
-          
+
           <div>
             <h4 className="text-sm font-semibold text-near-black uppercase tracking-wider mb-6">Legal</h4>
             <ul className="space-y-4">
@@ -66,7 +66,7 @@ export default function Footer() {
             </ul>
           </div>
         </div>
-        
+
         <div className="flex flex-col md:flex-row justify-between items-center pt-12 border-t border-border-cream/50 gap-6">
           <p className="text-stone-gray text-sm">
             © {currentYear} Abdul Ahad, M. Faizan, M. Hayyan | BS CYBER B | Assignment # 02. All rights reserved.

@@ -20,6 +20,8 @@ const {
 } = require("../controllers/notificationController");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
+const { getAllProjects, getAllVulnerabilities } = require("../controllers/adminController");
+
 const router = express.Router();
 
 router.use(protect);
@@ -31,6 +33,10 @@ router.get("/logs", getAuditLogs);
 router.get("/users", getUsers);
 router.put("/users/:id", updateUser);
 router.delete("/users/:id", deleteUser);
+
+router.get("/projects", getAllProjects);
+router.get("/vulnerabilities", getAllVulnerabilities);
+
 
 router.get("/newsletter", getSubscribers);
 router.post("/newsletter/send", sendNewsletter);
