@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: var(--font-serif);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --color-parchment: #f5f4ed;
+  --color-ivory: #faf9f5;
+  --color-terracotta: #c96442;
+  --color-near-black: #141413;
+  --color-stone-gray: #87867f;
+  --color-olive-gray: #5e5d59;
+  --color-warm-sand: #e8e6dc;
+  --color-charcoal-warm: #2a2924;
+  
+  --color-border-cream: #f0eee6;
+  
+  --shadow-whisper: 0 4px 24px -2px rgba(20, 20, 19, 0.04), 0 2px 8px -1px rgba(20, 20, 19, 0.02);
+  --shadow-warm: 0 12px 48px -12px rgba(20, 20, 19, 0.08);
+}
+
+@layer base {
+  body {
+    @apply bg-parchment text-near-black antialiased;
+    font-feature-settings: "ss01", "ss02", "cv01", "cv11";
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif font-medium tracking-tight;
+  }
+}
+
+@layer components {
+  .btn-terracotta {
+    @apply bg-terracotta text-ivory px-8 py-3.5 rounded-2xl font-medium transition-all duration-300 hover:bg-[#b5583a] hover:shadow-warm active:scale-[0.98] inline-flex items-center justify-center;
+  }
+
+  .btn-warm-sand {
+    @apply bg-warm-sand/50 text-olive-gray border border-border-cream px-8 py-3.5 rounded-2xl font-medium transition-all duration-300 hover:bg-warm-sand hover:text-near-black active:scale-[0.98] inline-flex items-center justify-center;
+  }
+
+  .card-ivory {
+    @apply bg-ivory border border-border-cream rounded-[32px] p-8 shadow-whisper;
+  }
+
+  .input-warm {
+    @apply w-full bg-warm-sand/20 border border-border-cream rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-terracotta/10 focus:border-terracotta/30 transition-all font-sans;
+  }
+}

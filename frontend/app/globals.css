@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+:root {
+  --parchment: #f5f4ed;
+  --ivory: #faf9f5;
+  --near-black: #141413;
+  --terracotta: #c96442;
+  --coral: #d97757;
+  --warm-sand: #e8e6dc;
+  --charcoal-warm: #4d4c48;
+  --olive-gray: #5e5d59;
+  --stone-gray: #87867f;
+  --dark-surface: #30302e;
+  --border-cream: #f0eee6;
+  --border-warm: #e8e6dc;
+}
+
+@theme {
+  --color-parchment: var(--parchment);
+  --color-ivory: var(--ivory);
+  --color-near-black: var(--near-black);
+  --color-terracotta: var(--terracotta);
+  --color-coral: var(--coral);
+  --color-warm-sand: var(--warm-sand);
+  --color-charcoal-warm: var(--charcoal-warm);
+  --color-olive-gray: var(--olive-gray);
+  --color-stone-gray: var(--stone-gray);
+  --color-dark-surface: var(--dark-surface);
+  --color-border-cream: var(--border-cream);
+  --color-border-warm: var(--border-warm);
+
+  --font-serif: var(--font-serif), Georgia, serif;
+  --font-sans: var(--font-sans), Inter, system-ui, sans-serif;
+  --font-mono: var(--font-mono), monospace;
+
+  --shadow-ring: 0 0 0 1px var(--border-warm);
+  --shadow-whisper: rgba(0, 0, 0, 0.05) 0px 4px 24px;
+}
+
+@layer base {
+  body {
+    @apply bg-parchment text-near-black font-sans selection:bg-terracotta/20;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif font-medium leading-[1.1];
+  }
+
+  p {
+    @apply leading-[1.6];
+  }
+}
+
+@layer components {
+  .btn-warm-sand {
+    @apply bg-warm-sand text-charcoal-warm px-4 py-2 rounded-lg shadow-[0_0_0_1px_#d1cfc5] hover:bg-[#dfddd2] transition-colors duration-200;
+  }
+
+  .btn-terracotta {
+    @apply bg-terracotta text-ivory px-6 py-3 rounded-xl shadow-[0_0_0_1px_#c96442] hover:bg-[#b05739] transition-colors duration-200;
+  }
+
+  .card-ivory {
+    @apply bg-ivory border border-border-cream rounded-xl p-6 shadow-whisper;
+  }
+}
