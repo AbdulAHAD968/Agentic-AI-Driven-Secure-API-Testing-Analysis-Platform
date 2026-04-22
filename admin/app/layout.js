@@ -22,6 +22,9 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata = {
   title: "Topic AI | Admin Control",
   description: "Secure administrative interface for the Topic AI platform.",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({ children }) {
