@@ -15,7 +15,8 @@ const {
 const { 
   adminCreateNotification, 
   adminGetNotifications, 
-  adminDeleteNotification 
+  adminDeleteNotification,
+  adminPurgeNotifications
 } = require("../controllers/notificationController");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
@@ -42,6 +43,7 @@ router.post("/contacts/:id/reply", replyToInquiry);
 
 router.get("/notifications", adminGetNotifications);
 router.post("/notifications", adminCreateNotification);
+router.delete("/notifications/purge", adminPurgeNotifications);
 router.delete("/notifications/:id", adminDeleteNotification);
 
 module.exports = router;

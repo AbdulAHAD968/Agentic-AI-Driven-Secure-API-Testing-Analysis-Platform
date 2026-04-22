@@ -146,6 +146,11 @@ export const deleteNotification = async (id) => {
     return response.data;
 };
 
+export const purgeNotifications = async (days) => {
+    const response = await api.delete(`/notifications/purge?days=${days}`);
+    return response.data;
+};
+
 export const replyToInquiry = async (id, message) => {
   const response = await api.post(`/contacts/${id}/reply`, { message });
   return response.data;

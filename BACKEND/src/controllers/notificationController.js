@@ -106,3 +106,22 @@ exports.adminDeleteNotification = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+exports.adminPurgeNotifications = async (req, res) => {
+  try {
+    const { days } = req.query;
+    let query = {};
+    if (days && days !== "all") {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - parseInt(days));
+      query.createdAt = { $lt: cutoff };
+    }
+    const result = await Notification.deleteMany(query);
+    res.status(200).json({ 
+      success: true, 
+      message: `${result.deletedCount} notifications purged successfully` 
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
