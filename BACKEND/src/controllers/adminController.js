@@ -171,11 +171,88 @@ exports.replyToInquiry = async (req, res) => {
 
 exports.getAuditLogs = async (req, res) => {
   try {
-    const logs = await require("../models/AuditLog").find()
+    const query = req.user.role === "admin" ? {} : { user: req.user.id };
+    
+    const logs = await require("../models/AuditLog").find(query)
       .populate("user", "name email")
       .sort("-createdAt")
-      .limit(100);
+      .limit(500); 
     res.status(200).json({ success: true, data: logs });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.getAuditStats = async (req, res) => {
+  try {
+    const AuditLog = require("../models/AuditLog");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const query = req.user.role === "admin" ? {} : { user: req.user.id };
+
+    const [total, success, failure, todayCount] = await Promise.all([
+      AuditLog.countDocuments(query),
+      AuditLog.countDocuments({ ...query, status: "success" }),
+      AuditLog.countDocuments({ ...query, status: "failure" }),
+      AuditLog.countDocuments({ ...query, createdAt: { $gte: today } })
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        total,
+        success,
+        failure,
+        todayCount,
+        successRate: total > 0 ? ((success / total) * 100).toFixed(1) : 100
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.deleteAuditLog = async (req, res) => {
+  try {
+    const AuditLog = require("../models/AuditLog");
+    const log = await AuditLog.findById(req.params.id);
+    
+    if (!log) {
+      return res.status(404).json({ success: false, message: "Log not found" });
+    }
+
+    // Check ownership
+    if (req.user.role !== "admin" && log.user.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: "Not authorized to delete this log" });
+    }
+
+    await log.deleteOne();
+    res.status(200).json({ success: true, message: "Log entry deleted" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.purgeAuditLogs = async (req, res) => {
+  try {
+    const AuditLog = require("../models/AuditLog");
+    const { days } = req.query;
+    
+    let query = req.user.role === "admin" ? {} : { user: req.user.id };
+
+    if (days && days !== "all") {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - parseInt(days));
+      query.createdAt = { $lt: cutoff };
+    }
+
+    const result = await AuditLog.deleteMany(query);
+    
+    res.status(200).json({ 
+      success: true, 
+      message: `${result.deletedCount} logs purged successfully` 
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

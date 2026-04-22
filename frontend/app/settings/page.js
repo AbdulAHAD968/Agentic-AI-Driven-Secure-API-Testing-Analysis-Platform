@@ -57,10 +57,25 @@ export default function SettingsPage() {
 
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setAvatar(file);
-      setPreview(URL.createObjectURL(file));
+    if (!file) return;
+
+    
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Invalid file type. Please upload a JPG, PNG or WEBP image.");
+      e.target.value = ""; 
+      return;
     }
+
+    
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("File is too large. Maximum size is 2MB.");
+      e.target.value = ""; 
+      return;
+    }
+
+    setAvatar(file);
+    setPreview(URL.createObjectURL(file));
   };
 
   const handleProfileUpdate = async (e) => {

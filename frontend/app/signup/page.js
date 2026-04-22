@@ -124,7 +124,7 @@ export default function SignupPage() {
             </button>
           </div>
           
-          {/* Real-time Requirements Check */}
+          
           <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
             {passwordRequirements.map((req, i) => {
               const met = req.regex.test(formData.password);

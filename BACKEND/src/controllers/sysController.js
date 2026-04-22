@@ -1,8 +1,4 @@
-/**
- * @desc    Get API Inventory and System Metadata
- * @route   GET /api/v1/system/inventory
- * @access  Public
- */
+
 exports.getInventory = async (req, res) => {
   res.status(200).json({
     success: true,

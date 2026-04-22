@@ -5,9 +5,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-/**
- * Automated Dynamic Security Testing (DAST) using GPT-4o-mini
- */
+
 exports.runDAST = async (project, apiEndpoints) => {
   try {
     const response = await openai.chat.completions.create({
@@ -36,17 +34,37 @@ exports.runDAST = async (project, apiEndpoints) => {
     });
 
     const result = JSON.parse(response.choices[0].message.content);
-    const findingsData = Array.isArray(result) ? result : (result.vulnerabilities || Object.values(result)[0] || []);
+    
+    
+    let findingsData = [];
+    if (Array.isArray(result)) {
+      findingsData = result;
+    } else if (result.vulnerabilities && Array.isArray(result.vulnerabilities)) {
+      findingsData = result.vulnerabilities;
+    } else {
+      findingsData = Object.values(result).find(v => Array.isArray(v)) || (typeof result === 'object' ? [result] : []);
+    }
 
-    const findings = findingsData.map((f) => ({
-      project: project._id,
-      title: f.title,
-      severity: f.severity,
-      type: "DAST",
-      description: f.description,
-      mitigation: f.mitigation,
-      payload: f.payload,
-    }));
+    const normalizeSeverity = (s) => {
+      const severity = String(s || "").toLowerCase();
+      if (severity.includes("crit")) return "Critical";
+      if (severity.includes("high")) return "High";
+      if (severity.includes("med")) return "Medium";
+      if (severity.includes("low")) return "Low";
+      return "Info";
+    };
+
+    const findings = findingsData
+      .filter(f => f && (f.title || f.description))
+      .map((f) => ({
+        project: project._id,
+        title: String(f.title || "Unknown Security Issue"),
+        severity: normalizeSeverity(f.severity),
+        type: "DAST",
+        description: String(f.description || f.title || "No description provided"),
+        mitigation: String(f.mitigation || "Consult security best practices for this issue type."),
+        payload: typeof f.payload === "object" ? JSON.stringify(f.payload, null, 2) : String(f.payload || ""),
+      }));
 
     if (findings.length > 0) {
       await Vulnerability.insertMany(findings);

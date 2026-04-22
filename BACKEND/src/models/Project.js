@@ -29,6 +29,12 @@ const projectSchema = new mongoose.Schema(
       enum: ["idle", "scanning", "completed", "failed"],
       default: "idle",
     },
+    vaultPath: {
+      type: String,
+    },
+    fileName: {
+      type: String,
+    },
   },
   {
     timestamps: true,

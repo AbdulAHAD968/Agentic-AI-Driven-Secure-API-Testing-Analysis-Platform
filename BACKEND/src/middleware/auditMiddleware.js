@@ -1,8 +1,6 @@
 const AuditLog = require("../models/AuditLog");
 
-/**
- * Middleware to log security sensitive actions
- */
+
 exports.audit = (action) => {
   return async (req, res, next) => {
     const originalJson = res.json;

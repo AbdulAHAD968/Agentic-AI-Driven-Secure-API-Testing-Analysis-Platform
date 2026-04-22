@@ -160,7 +160,7 @@ exports.login = async (req, res, next) => {
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
-    // Check if account is locked
+    
     if (user.lockUntil && user.lockUntil > Date.now()) {
       const remainingMinutes = Math.ceil((user.lockUntil - Date.now()) / (1000 * 60));
       return res.status(423).json({ 
@@ -175,9 +175,9 @@ exports.login = async (req, res, next) => {
       // Increment login attempts
       user.loginAttempts += 1;
       
-      // Lock account if threshold reached (5 attempts)
+      
       if (user.loginAttempts >= 5) {
-        user.lockUntil = Date.now() + 15 * 60 * 1000; // 15 mins lock
+        user.lockUntil = Date.now() + 15 * 60 * 1000; 
         await user.save();
         return res.status(423).json({ 
           success: false, 
@@ -193,7 +193,7 @@ exports.login = async (req, res, next) => {
       return res.status(403).json({ success: false, message: "Please verify your email first", emailNotVerified: true });
     }
 
-    // Reset lock logic on success
+    
     user.loginAttempts = 0;
     user.lockUntil = undefined;
     

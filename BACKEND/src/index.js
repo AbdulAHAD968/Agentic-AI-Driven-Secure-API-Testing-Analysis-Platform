@@ -11,7 +11,7 @@ const customSanitizer = require("./utils/sanitizer");
 
 dotenv.config();
 
-// Connect Database
+
 connectDB();
 
 const app = express();
@@ -19,9 +19,9 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
-// Temporary disablement to isolate Express 5 conflict
-// app.use(customSanitizer);
-// app.use(helmet());
+
+
+
 
 app.use(
   cors({
@@ -30,13 +30,13 @@ app.use(
   })
 );
 
-// Basic functional middleware
+
 app.use((req, res, next) => {
   next();
 });
 
-// Stricter rate limiting for security-sensitive paths (Temporarily disabled)
-// const securityLimiter = rateLimit({ ... });
+
+
 
 const auth = require("./routes/authRoutes");
 const user = require("./routes/userRoutes");
@@ -46,6 +46,7 @@ const admin = require("./routes/adminRoutes");
 const notifications = require("./routes/notificationRoutes");
 const projects = require("./routes/projectRoutes");
 const system = require("./routes/sysRoutes");
+const audit = require("./routes/auditRoutes");
 
 app.use("/api/v1/auth", auth);
 app.use("/api/v1/user", user);
@@ -55,6 +56,7 @@ app.use("/api/v1/admin", admin);
 app.use("/api/v1/notifications", notifications);
 app.use("/api/v1/projects", projects);
 app.use("/api/v1/system", system);
+app.use("/api/v1/audit", audit);
 
 app.get("/", (req, res) => {
   res.send("DevSecOps AI Platform API is running...");

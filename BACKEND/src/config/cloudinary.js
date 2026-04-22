@@ -12,11 +12,25 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: "TopicAI_Profiles",
-    allowed_formats: ["jpg", "png", "jpeg"],
+    allowed_formats: ["jpg", "png", "jpeg", "webp"],
     transformation: [{ width: 500, height: 500, crop: "limit" }],
   },
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 2 * 1024 * 1024 
+  },
+  fileFilter: (req, file, cb) => {
+    
+    const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid file type. Only JPG, PNG and WEBP are allowed."), false);
+    }
+  }
+});
 
 module.exports = { cloudinary, upload };

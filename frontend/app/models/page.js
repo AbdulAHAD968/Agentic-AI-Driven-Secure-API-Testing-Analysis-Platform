@@ -37,7 +37,7 @@ export default function ModelsPage() {
     <div className="flex flex-col min-h-screen bg-parchment">
       <Header />
       <main className="flex-grow">
-        {/* Header Section */}
+        
         <section className="py-24 px-6 border-b border-border-cream">
           <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
             <div className="relative aspect-square bg-near-black rounded-[48px] overflow-hidden shadow-2xl group">
@@ -74,7 +74,7 @@ export default function ModelsPage() {
           </div>
         </section>
 
-        {/* Model Details */}
+        
         <section className="py-24 px-6 bg-ivory/50">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-4xl mb-16 font-serif">Platform Components</h2>

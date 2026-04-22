@@ -1,17 +1,19 @@
 const express = require("express");
 const router = express.Router();
-const { 
-  createProject, 
-  getProjects, 
-  triggerScan, 
-  getReport 
+const {
+  createProject,
+  getProjects,
+  triggerScan,
+  getReport,
+  deleteProject,
+  getProjectStats
 } = require("../controllers/projectController");
 const { protect } = require("../middleware/authMiddleware");
 const { audit } = require("../middleware/auditMiddleware");
 const multer = require("multer");
 const path = require("path");
 
-// Configure multer for temp storage
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, "uploads/");
@@ -21,9 +23,9 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 }, 
   fileFilter: (req, file, cb) => {
     const filetypes = /js|py|txt|zip|json/;
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
@@ -39,6 +41,12 @@ router.use(protect);
 router.route("/")
   .get(getProjects)
   .post(upload.single("code"), audit("CREATE_PROJECT"), createProject);
+
+router.get("/stats/overview", getProjectStats);
+
+router.route("/:id")
+  .get(getReport)
+  .delete(audit("DELETE_PROJECT"), deleteProject);
 
 router.post("/:id/scan", audit("TRIGGER_SCAN"), triggerScan);
 router.get("/:id/report", getReport);

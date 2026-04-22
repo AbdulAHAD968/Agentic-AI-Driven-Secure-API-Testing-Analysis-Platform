@@ -3,29 +3,68 @@
 import { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { Loader2, FileBarChart2, ShieldCheck, AlertTriangle, ShieldAlert, TrendingUp, ChevronRight } from "lucide-react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
+import { 
+  Loader2, 
+  FileBarChart2, 
+  TrendingUp, 
+  ShieldAlert, 
+  ShieldCheck, 
+  ChevronRight,
+  PieChart as PieIcon,
+  BarChart3,
+  AlertTriangle
+} from "lucide-react";
+import { 
+  PieChart, 
+  Pie, 
+  Cell, 
+  ResponsiveContainer, 
+  Tooltip, 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid,
+  Legend
+} from "recharts";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1",
   withCredentials: true
 });
 
+const SEVERITY_COLORS = {
+  critical: "#dc2626", 
+  high: "#ea580c",    
+  medium: "#d97706",  
+  low: "#2563eb",     
+  info: "#4b5563"     
+};
+
 export default function ReportsPage() {
   const router = useRouter();
   const [projects, setProjects] = useState([]);
+  const [stats, setStats] = useState({
+    totalVulnerabilities: 0,
+    criticalIssues: 0,
+    grade: "N/A",
+    score: 0,
+    totalProjects: 0,
+    severityCounts: { critical: 0, high: 0, medium: 0, low: 0, info: 0 }
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchReports();
+    fetchStats();
   }, []);
 
   const fetchReports = async () => {
     try {
       const res = await api.get("/projects");
-      // Filter for projects that have a completed scan
       const completedProjects = res.data.data.filter(p => p.scanStatus === "completed");
       setProjects(completedProjects);
     } catch (err) {
@@ -35,15 +74,25 @@ export default function ReportsPage() {
     }
   };
 
-  const getSeverities = (project) => {
-    // This is a placeholder since the actual report data might be nested or in a separate call
-    // For the summary view, we'll assume some counts or default to 0
-    return {
-      critical: 2,
-      high: 5,
-      medium: 12
-    };
+  const fetchStats = async () => {
+    try {
+      const res = await api.get("/projects/stats/overview");
+      setStats(res.data.data);
+    } catch (err) {
+      console.error("Stats fetch failed", err);
+    }
   };
+
+  const pieData = Object.entries(stats.severityCounts)
+    .filter(([_, value]) => value > 0)
+    .map(([name, value]) => ({ name: name.toUpperCase(), value }));
+
+  const barData = projects.slice(0, 10).map(p => ({
+    name: p.name.length > 20 ? p.name.substring(0, 17) + "..." : p.name,
+    critical: p.findingsSummary?.critical || 0,
+    high: p.findingsSummary?.high || 0,
+    medium: p.findingsSummary?.medium || 0
+  }));
 
   return (
     <ProtectedRoute>
@@ -68,31 +117,94 @@ export default function ReportsPage() {
               </div>
             ) : (
               <div className="space-y-8">
-                {/* Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  <div className="bg-near-black rounded-[32px] p-8 text-ivory">
-                    <TrendingUp className="w-8 h-8 text-terracotta mb-4" />
-                    <p className="text-sm opacity-60 mb-1">Total Vulnerabilities</p>
-                    <p className="text-4xl font-serif">58</p>
-                    <p className="text-[10px] font-mono mt-4 text-green-400 uppercase tracking-widest">↓ 12% from last week</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="bg-near-black rounded-[32px] p-8 text-ivory flex flex-col justify-center">
+                    <TrendingUp className="w-6 h-6 text-terracotta mb-4" />
+                    <p className="text-xs opacity-60 mb-1">Total Vulnerabilities</p>
+                    <p className="text-3xl font-serif">{stats.totalVulnerabilities}</p>
+                    <p className="text-[9px] font-mono mt-4 text-green-400 uppercase tracking-widest">Global Aggregate</p>
                   </div>
-                  <div className="bg-ivory border border-border-cream rounded-[32px] p-8 shadow-whisper">
-                    <ShieldAlert className="w-8 h-8 text-terracotta mb-4" />
-                    <p className="text-sm text-stone-gray mb-1">Critical Issues</p>
-                    <p className="text-4xl font-serif text-near-black">8</p>
-                    <p className="text-[10px] font-mono mt-4 text-terracotta uppercase tracking-widest">Immediate action required</p>
+                  <div className="bg-ivory border border-border-cream rounded-[32px] p-8 shadow-whisper flex flex-col justify-center">
+                    <ShieldAlert className="w-6 h-6 text-terracotta mb-4" />
+                    <p className="text-xs text-stone-gray mb-1">Critical & High</p>
+                    <p className="text-3xl font-serif text-near-black">{stats.criticalIssues}</p>
+                    <p className="text-[9px] font-mono mt-4 text-terracotta uppercase tracking-widest">Action Items</p>
                   </div>
-                  <div className="bg-ivory border border-border-cream rounded-[32px] p-8 shadow-whisper">
-                    <ShieldCheck className="w-8 h-8 text-green-600 mb-4" />
-                    <p className="text-sm text-stone-gray mb-1">Defense Score</p>
-                    <p className="text-4xl font-serif text-near-black">A-</p>
-                    <p className="text-[10px] font-mono mt-4 text-near-black/40 uppercase tracking-widest">Based on active projects</p>
+                  <div className="bg-ivory border border-border-cream rounded-[32px] p-8 shadow-whisper flex flex-col justify-center">
+                    <ShieldCheck className="w-6 h-6 text-green-600 mb-4" />
+                    <p className="text-xs text-stone-gray mb-1">Defense Grade</p>
+                    <p className="text-3xl font-serif text-near-black">{stats.grade}</p>
+                    <p className="text-[9px] font-mono mt-4 text-near-black/40 uppercase tracking-widest">Score: {stats.score}</p>
+                  </div>
+                  
+                  
+                  <div className="bg-ivory border border-border-cream rounded-[32px] p-6 shadow-whisper relative min-h-[180px]">
+                    <p className="absolute top-6 left-6 text-[10px] font-mono text-stone-gray uppercase tracking-widest">Severity Distribution</p>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="60%"
+                          innerRadius={35}
+                          outerRadius={50}
+                          paddingAngle={4}
+                          dataKey="value"
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={SEVERITY_COLORS[entry.name.toLowerCase()]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
 
-                {/* Reports List */}
+                
+                <div className="bg-ivory border border-border-cream rounded-[32px] p-8 shadow-whisper flex flex-col">
+                  <h3 className="text-lg font-serif text-near-black mb-10 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-terracotta" /> Project Risk Comparison
+                  </h3>
+                  <div className="flex-grow h-[450px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart 
+                        data={barData} 
+                        layout="vertical"
+                        margin={{ left: 20, right: 40 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={true} vertical={false} />
+                        <XAxis type="number" fontSize={10} axisLine={false} tickLine={false} />
+                        <YAxis 
+                          dataKey="name" 
+                          type="category" 
+                          fontSize={11} 
+                          width={120}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <Tooltip 
+                          cursor={{ fill: 'rgba(234, 88, 12, 0.05)' }}
+                          contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                        />
+                        <Legend iconType="circle" verticalAlign="top" align="right" wrapperStyle={{ paddingBottom: '20px' }} />
+                        <Bar dataKey="critical" stackId="a" fill={SEVERITY_COLORS.critical} radius={[0, 0, 0, 0]} barSize={20} />
+                        <Bar dataKey="high" stackId="a" fill={SEVERITY_COLORS.high} radius={[0, 0, 0, 0]} barSize={20} />
+                        <Bar dataKey="medium" stackId="a" fill={SEVERITY_COLORS.medium} radius={[0, 6, 6, 0]} barSize={20} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <p className="text-[10px] text-center text-stone-gray font-mono mt-6 uppercase tracking-widest">
+                    Showing comparative risk for top {barData.length} active projects
+                  </p>
+                </div>
+
+                
                 <div className="bg-ivory border border-border-cream rounded-[40px] p-8 shadow-whisper">
-                  <h2 className="text-2xl font-serif text-near-black mb-8">Ready Analysis</h2>
+                  <div className="flex justify-between items-center mb-8">
+                    <h2 className="text-2xl font-serif text-near-black">Ready Analysis</h2>
+                  </div>
                   <div className="space-y-4">
                     {projects.map((project) => (
                       <div 
@@ -108,16 +220,16 @@ export default function ReportsPage() {
                           <p className="text-[10px] font-mono text-stone-gray uppercase tracking-widest mt-1">Generated: {new Date(project.lastScan).toLocaleDateString()}</p>
                         </div>
                         <div className="flex gap-4">
-                           <div className="text-center px-4 py-2 bg-red-50 rounded-xl border border-red-100">
-                             <p className="text-xs font-mono font-bold text-red-600">02</p>
+                           <div className="text-center px-4 py-2 bg-red-50 rounded-xl border border-red-100 min-w-[66px]">
+                             <p className="text-xs font-mono font-bold text-red-600">{project.findingsSummary?.critical || 0}</p>
                              <p className="text-[8px] uppercase tracking-tighter opacity-60">Critical</p>
                            </div>
-                           <div className="text-center px-4 py-2 bg-orange-50 rounded-xl border border-orange-100">
-                             <p className="text-xs font-mono font-bold text-orange-600">05</p>
+                           <div className="text-center px-4 py-2 bg-orange-50 rounded-xl border border-orange-100 min-w-[66px]">
+                             <p className="text-xs font-mono font-bold text-orange-600">{project.findingsSummary?.high || 0}</p>
                              <p className="text-[8px] uppercase tracking-tighter opacity-60">High</p>
                            </div>
-                           <div className="text-center px-4 py-2 bg-stone-50 rounded-xl border border-stone-100">
-                             <p className="text-xs font-mono font-bold text-stone-600">12</p>
+                           <div className="text-center px-4 py-2 bg-stone-50 rounded-xl border border-stone-100 min-w-[66px]">
+                             <p className="text-xs font-mono font-bold text-stone-600">{project.findingsSummary?.medium || 0}</p>
                              <p className="text-[8px] uppercase tracking-tighter opacity-60">Medium</p>
                            </div>
                         </div>

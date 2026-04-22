@@ -32,7 +32,7 @@ export default function DocsPage() {
       <Header />
       <div className="flex-grow max-w-7xl mx-auto w-full px-6 py-16 grid grid-cols-1 lg:grid-cols-4 gap-12">
         
-        {/* Sidebar Navigation */}
+        
         <aside className="hidden lg:block space-y-8 sticky top-36 h-fit">
           <div>
             <h4 className="text-xs font-mono uppercase tracking-widest text-olive-gray mb-6">Documentation</h4>
@@ -59,10 +59,10 @@ export default function DocsPage() {
           </div>
         </aside>
 
-        {/* Main Content */}
+        
         <main className="lg:col-span-3 space-y-24">
           
-          {/* Quick Start */}
+          
           <section id="started" className="scroll-mt-32">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 bg-near-black text-ivory rounded-xl flex items-center justify-center">
@@ -104,7 +104,7 @@ export default function DocsPage() {
             </div>
           </section>
 
-          {/* Architecture */}
+          
           <section id="architecture" className="scroll-mt-32">
             <h2 className="text-3xl font-serif mb-8">System Architecture</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -125,7 +125,7 @@ export default function DocsPage() {
             </div>
           </section>
 
-          {/* AI Models */}
+          
           <section id="models" className="scroll-mt-32">
             <div className="flex items-center gap-3 mb-6">
               <h2 className="text-3xl font-serif">AI-Assisted Security</h2>

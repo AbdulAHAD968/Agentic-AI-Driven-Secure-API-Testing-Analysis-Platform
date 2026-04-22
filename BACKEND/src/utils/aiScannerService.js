@@ -5,9 +5,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-/**
- * AI-assisted Static Code Analysis (SAST) using GPT-4o-mini
- */
+
 exports.runSAST = async (project, codeContent) => {
   try {
     const response = await openai.chat.completions.create({
@@ -15,47 +13,60 @@ exports.runSAST = async (project, codeContent) => {
       messages: [
         {
           role: "system",
-          content: `You are a senior security researcher. Analyze the provided backend source code for vulnerabilities.
-          Focus on:
-          1. BOLA (Broken Object Level Authorization): Instances where records are fetched by ID without owner verification.
-          2. NoSQL/SQL Injection: Unsanitized inputs used in database queries.
-          3. Broken Authentication: Weak password or token handling.
-          4. Generic OWASP API Security Top 10 patterns.
+          content: `You are a senior security researcher and SAST tool engine. 
+          Analyze the provided backend source code for security vulnerabilities.
           
-          Return ONLY a JSON array...`,
+          MANDATORY JSON OUTPUT FORMAT:
+          {
+            "vulnerabilities": [
+              {
+                "title": "Short descriptive title (e.g., SQL Injection in auth.js)",
+                "severity": "Critical | High | Medium | Low | Info",
+                "description": "Clear explanation of the flaw and its impact.",
+                "mitigation": "Step-by-step fix recommendations.",
+                "location": "filename:line_number or function name",
+                "payload": "Example malicious input or code snippet triggering the flaw"
+              }
+            ]
+          }
+
+          RULES:
+          1. Focus on OWASP API Security Top 10.
+          2. Be precise about 'location' (filename and line).
+          3. If no vulnerabilities are found, return an empty array for "vulnerabilities".
+          4. Do NOT include any markdown or text outside the JSON object.`,
         },
         {
           role: "user",
-          content: `Project: ${project.name}\nDescription: ${project.description}\n\nSource Code Content:\n${codeContent}`,
+          content: `Project: ${project.name}\nDescription: ${project.description}\n\n### SOURCE CODE TO ANALYZE:\n${codeContent}`,
         },
       ],
       response_format: { type: "json_object" },
     });
 
     const result = JSON.parse(response.choices[0].message.content);
-    
-    // API10:2023 - Unsafe Consumption of APIs Protection
-    // Ensure the third-party response is properly structured
-    let findingsData = [];
-    if (Array.isArray(result)) {
-      findingsData = result;
-    } else if (result.vulnerabilities && Array.isArray(result.vulnerabilities)) {
-      findingsData = result.vulnerabilities;
-    } else {
-      // Handle non-standard formats safely
-      findingsData = Object.values(result).find(v => Array.isArray(v)) || [];
-    }
+    const findingsData = result.vulnerabilities || [];
+
+    const normalizeSeverity = (s) => {
+      const severity = String(s || "").toLowerCase();
+      if (severity.includes("crit")) return "Critical";
+      if (severity.includes("high")) return "High";
+      if (severity.includes("med")) return "Medium";
+      if (severity.includes("low")) return "Low";
+      return "Info";
+    };
 
     const findings = findingsData
-      .filter(f => f.title && f.severity) // Validation
+      .filter(f => f && (f.title || f.description))
       .map((f) => ({
         project: project._id,
-        title: String(f.title),
-        severity: String(f.severity),
+        title: String(f.title).substring(0, 100),
+        severity: normalizeSeverity(f.severity),
         type: "SAST",
-        description: String(f.description || ""),
-        mitigation: String(f.mitigation || ""),
-        location: String(f.location || "unknown"),
+        description: String(f.description || "No detailed description available."),
+        mitigation: String(f.mitigation || "Consult OWASP guidelines for this vulnerability type."),
+        location: String(f.location || "Multiple files"),
+        payload: typeof f.payload === "object" ? JSON.stringify(f.payload, null, 2) : String(f.payload || ""),
       }));
 
     if (findings.length > 0) {

@@ -8,6 +8,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { Loader2, Shield, Plus, Play, LayoutDashboard, Trash2 } from "lucide-react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import ConfirmModal from "@/components/ConfirmModal";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1",
@@ -22,9 +23,33 @@ export default function ProjectsPage() {
   const [newProject, setNewProject] = useState({ name: "", description: "", file: null });
   const [scanningId, setScanningId] = useState(null);
 
+  
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState({
+    title: "",
+    message: "",
+    onConfirm: () => {}
+  });
+
   useEffect(() => {
     fetchProjects();
   }, []);
+
+  
+  useEffect(() => {
+    const isScanning = projects.some(p => p.scanStatus === "scanning");
+    let interval;
+
+    if (isScanning) {
+      interval = setInterval(() => {
+        fetchProjects();
+      }, 5000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [projects]);
 
   const fetchProjects = async () => {
     try {
@@ -68,6 +93,25 @@ export default function ProjectsPage() {
     }
   };
 
+  const handleDelete = (e, id) => {
+    e.stopPropagation();
+    setConfirmConfig({
+      title: "Delete Project",
+      message: "Are you sure you want to permanently delete this project? All scan history and findings will be cleared. This action cannot be undone.",
+      onConfirm: async () => {
+        try {
+          await api.delete(`/projects/${id}`);
+          toast.success("Project deleted successfully");
+          fetchProjects();
+        } catch (err) {
+          toast.error("Failed to delete project");
+        }
+        setConfirmOpen(false);
+      }
+    });
+    setConfirmOpen(true);
+  };
+
   return (
     <ProtectedRoute>
       <div className="flex flex-col min-h-screen bg-parchment">
@@ -106,19 +150,21 @@ export default function ProjectsPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {projects.map((project) => (
-                  <div key={project._id} className="bg-ivory border border-border-cream rounded-[32px] p-6 shadow-whisper group hover:border-terracotta/30 transition-all flex flex-col">
+                  <div key={project._id} className="bg-ivory border border-border-cream rounded-[32px] p-6 shadow-whisper group hover:border-terracotta/30 transition-all flex flex-col cursor-pointer" onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
                     <div className="flex justify-between items-start mb-6">
                       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                        project.scanStatus === 'completed' ? 'bg-green-50 text-green-600' : 'bg-warm-sand/50 text-terracotta'
+                        project.scanStatus === 'completed' ? 'bg-green-50 text-green-600' : 
+                        project.scanStatus === 'scanning' ? 'bg-yellow-50 text-yellow-600' : 'bg-warm-sand/50 text-terracotta'
                       }`}>
-                        {scanningId === project._id ? (
+                        {scanningId === project._id || project.scanStatus === 'scanning' ? (
                           <Loader2 className="w-6 h-6 animate-spin" />
                         ) : (
                           <Shield className="w-6 h-6" />
                         )}
                       </div>
                       <span className={`text-[10px] font-mono px-2 py-1 rounded-full uppercase tracking-tighter ${
-                        project.scanStatus === 'completed' ? 'bg-green-100 text-green-700' : 'bg-stone-100 text-stone-600'
+                        project.scanStatus === 'completed' ? 'bg-green-100 text-green-700' : 
+                        project.scanStatus === 'scanning' ? 'bg-yellow-100 text-yellow-700' : 'bg-stone-100 text-stone-600'
                       }`}>
                         {project.scanStatus}
                       </span>
@@ -131,22 +177,20 @@ export default function ProjectsPage() {
                         {project.lastScan ? `Scanned ${new Date(project.lastScan).toLocaleDateString()}` : 'Never scanned'}
                       </p>
                       <div className="flex gap-2">
-                        {project.scanStatus === 'completed' && (
-                          <button 
-                            onClick={() => router.push(`/dashboard/projects/${project._id}`)}
-                            className="bg-ivory border border-border-cream text-near-black p-2 rounded-xl hover:border-terracotta transition-colors"
-                            title="View Report"
-                          >
-                            <LayoutDashboard className="w-4 h-4" />
-                          </button>
-                        )}
                         <button 
-                          onClick={() => triggerScan(project._id)}
-                          disabled={scanningId === project._id}
+                          onClick={(e) => { e.stopPropagation(); triggerScan(project._id); }}
+                          disabled={scanningId === project._id || project.scanStatus === 'scanning'}
                           className="bg-terracotta/10 text-terracotta p-2 rounded-xl hover:bg-terracotta hover:text-ivory transition-colors disabled:opacity-50"
                           title="Run AI Scan"
                         >
                           <Play className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={(e) => handleDelete(e, project._id)}
+                          className="bg-stone-50 border border-border-cream text-stone-gray p-2 rounded-xl hover:bg-terracotta/5 hover:text-terracotta hover:border-terracotta/30 transition-all"
+                          title="Delete Project"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -155,13 +199,21 @@ export default function ProjectsPage() {
               </div>
             )}
           </div>
+          
+          <ConfirmModal 
+            isOpen={confirmOpen}
+            title={confirmConfig.title}
+            message={confirmConfig.message}
+            onConfirm={confirmConfig.onConfirm}
+            onCancel={() => setConfirmOpen(false)}
+          />
 
-          {/* Upload Modal */}
+          
           {isModalOpen && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-6">
               <div className="bg-ivory border border-border-cream rounded-[40px] p-8 max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-200">
                 <h3 className="text-3xl font-serif text-near-black mb-2">Secure Upload</h3>
-                <p className="text-stone-gray text-sm mb-8">Send your source code to the ephemeral sandbox for analysis.</p>
+                <p className="text-stone-gray text-sm mb-8">Targeted vulnerability scanning for backend logic. Our current scope is focused on API security; full-stack analysis is coming soon.</p>
                 <form onSubmit={handleUpload} className="space-y-6">
                   <div>
                     <label className="block text-[10px] font-mono mb-2 uppercase tracking-widest opacity-60">Project Name</label>

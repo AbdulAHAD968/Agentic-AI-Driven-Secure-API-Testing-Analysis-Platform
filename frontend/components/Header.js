@@ -59,7 +59,7 @@ export default function Header() {
           DevSecOps AI Platform
         </Link>
 
-        {/* Global Navigation - Mid Section */}
+        
         <div className="hidden md:flex items-center gap-8">
           {user ? (
             <>

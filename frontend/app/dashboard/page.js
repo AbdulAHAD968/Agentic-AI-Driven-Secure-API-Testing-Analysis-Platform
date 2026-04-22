@@ -31,7 +31,7 @@ export default function DashboardOverview() {
   const [stats, setStats] = useState({
     totalProjects: 0,
     completedScans: 0,
-    criticalFindings: 8 // Placeholder
+    criticalFindings: 8 
   });
   const [loading, setLoading] = useState(true);
 
@@ -51,7 +51,7 @@ export default function DashboardOverview() {
           criticalFindings: 8
         });
       } catch (err) {
-        // Redirect handled by ProtectedRoute, but we can set loading false
+        
       } finally {
         setLoading(false);
       }
@@ -82,7 +82,7 @@ export default function DashboardOverview() {
               </div>
             ) : (
               <div className="space-y-12">
-                {/* Quick Stats */}
+                
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   {statCards.map((stat, i) => (
                     <Link 
@@ -103,7 +103,7 @@ export default function DashboardOverview() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  {/* Shortcut Actions */}
+                  
                   <div className="lg:col-span-2 space-y-8">
                     <div className="bg-near-black rounded-[40px] p-10 text-ivory shadow-2xl relative overflow-hidden group">
                       <div className="relative z-10 max-w-lg">
@@ -141,7 +141,7 @@ export default function DashboardOverview() {
                     </div>
                   </div>
 
-                  {/* System Status */}
+                  
                   <div className="bg-ivory border border-border-cream rounded-[40px] p-8 shadow-whisper flex flex-col">
                     <div className="flex items-center justify-between mb-8">
                        <h2 className="text-2xl font-serif text-near-black">Health</h2>

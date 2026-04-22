@@ -1,22 +1,14 @@
-/**
- * Express 5 Compatible NoSQL & XSS Sanitizer
- * 
- * Standard middlewares like xss-clean and older mongo-sanitize fail on Express 5
- * because they attempt to re-assign read-only properties like req.query.
- * 
- * This sanitizer performs deep traversal and modifies values IN-PLACE
- * to maintain compatibility with Express 5's read-only getters.
- */
+
 
 const sanitizeValue = (val) => {
   if (typeof val !== 'string') return val;
   
-  // Neutralize NoSQL injection patterns ($ and .)
-  // and basic XSS script tags
+  
+  
   return val
     .replace(/\$/g, '_')
     .replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gim, '')
-    .replace(/[<>]/g, ''); // Basic character neutralization
+    .replace(/[<>]/g, ''); 
 };
 
 const deepSanitize = (obj) => {

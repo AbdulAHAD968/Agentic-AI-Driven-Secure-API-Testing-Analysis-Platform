@@ -13,7 +13,7 @@ export default function OverviewPage() {
     <div className="flex flex-col min-h-screen bg-parchment">
       <Header />
       <main className="flex-grow">
-        {/* Hero Section */}
+        
         <section className="py-24 px-6 border-b border-border-cream">
           <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
@@ -41,7 +41,7 @@ export default function OverviewPage() {
           </div>
         </section>
 
-        {/* Component Breakdown */}
+        
         <section className="py-24 px-6 bg-ivory/50">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-4xl mb-16 font-serif">Core Architecture</h2>
