@@ -61,10 +61,20 @@ export default function Header() {
 
         {/* Global Navigation - Mid Section */}
         <div className="hidden md:flex items-center gap-8">
-          <Link href="/overview" className="text-sm font-medium text-stone-gray hover:text-terracotta transition-colors">Overview</Link>
-          <Link href="/pricing" className="text-sm font-medium text-stone-gray hover:text-terracotta transition-colors">Pricing</Link>
-          <Link href="/models" className="text-sm font-medium text-stone-gray hover:text-terracotta transition-colors">Models</Link>
-          <Link href="/docs" className="text-sm font-medium text-stone-gray hover:text-terracotta transition-colors">Docs</Link>
+          {user ? (
+            <>
+              <Link href="/dashboard/projects" className="text-sm font-medium text-stone-gray hover:text-terracotta transition-colors">Projects</Link>
+              <Link href="/dashboard/logs" className="text-sm font-medium text-stone-gray hover:text-terracotta transition-colors">Logs</Link>
+              <Link href="/dashboard/reports" className="text-sm font-medium text-stone-gray hover:text-terracotta transition-colors">Reports</Link>
+            </>
+          ) : (
+            <>
+              <Link href="/overview" className="text-sm font-medium text-stone-gray hover:text-terracotta transition-colors">Overview</Link>
+              <Link href="/pricing" className="text-sm font-medium text-stone-gray hover:text-terracotta transition-colors">Pricing</Link>
+              <Link href="/models" className="text-sm font-medium text-stone-gray hover:text-terracotta transition-colors">Models</Link>
+              <Link href="/docs" className="text-sm font-medium text-stone-gray hover:text-terracotta transition-colors">Docs</Link>
+            </>
+          )}
         </div>
 
         <div className="hidden md:flex items-center gap-10">

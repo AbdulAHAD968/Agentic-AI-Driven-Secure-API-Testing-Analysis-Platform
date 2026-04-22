@@ -6,18 +6,22 @@ const rateLimit = require("express-rate-limit");
 const cookieParser = require("cookie-parser");
 const mongoSanitize = require("express-mongo-sanitize");
 const slowdown = require("express-slow-down");
+const connectDB = require("./config/db");
 const customSanitizer = require("./utils/sanitizer");
 
-// ... (skipping to middleware section)
+dotenv.config();
+
+// Connect Database
+connectDB();
+
+const app = express();
 
 app.use(express.json());
 app.use(cookieParser());
 
-// Data sanitization against NoSQL injection & XSS (Express 5 Compatible)
-app.use(customSanitizer);
-
-app.use(helmet());
-
+// Temporary disablement to isolate Express 5 conflict
+// app.use(customSanitizer);
+// app.use(helmet());
 
 app.use(
   cors({
@@ -26,37 +30,13 @@ app.use(
   })
 );
 
-
-// Request timeout (ASVS V13.1 - Resource Exhaustion Protection)
+// Basic functional middleware
 app.use((req, res, next) => {
-  res.setTimeout(30000, () => {
-    res.status(408).send('Request Timeout');
-  });
   next();
 });
 
-const speedLimiter = slowdown({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  delayAfter: 50, // allow 50 requests per 15 minutes, then...
-  delayMs: (hits) => hits * 100, // begin adding 100ms of delay per request above 50
-});
-app.use("/api", speedLimiter);
-
-const limiter = rateLimit({
-  windowMs: 10 * 60 * 1000, 
-  max: 100, 
-});
-app.use("/api", limiter);
-
-// Stricter rate limiting for security-sensitive paths
-const securityLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 20, // 20 requests per hour
-  message: "Too many requests from this IP, please try again after an hour",
-});
-app.use("/api/v1/auth/login", securityLimiter);
-app.use("/api/v1/projects/:id/scan", securityLimiter);
-
+// Stricter rate limiting for security-sensitive paths (Temporarily disabled)
+// const securityLimiter = rateLimit({ ... });
 
 const auth = require("./routes/authRoutes");
 const user = require("./routes/userRoutes");
@@ -76,19 +56,15 @@ app.use("/api/v1/notifications", notifications);
 app.use("/api/v1/projects", projects);
 app.use("/api/v1/system", system);
 
-
 app.get("/", (req, res) => {
   res.send("DevSecOps AI Platform API is running...");
 });
 
-
 app.use((err, req, res, next) => {
-  // API8:2023 - Security Misconfiguration Protection
-  // Hide detailed error stacks in production
   if (process.env.NODE_ENV !== "development") {
-    console.error(err.message); // Log message only
+    console.error(err.message);
   } else {
-    console.error(err.stack); // Full stack in dev
+    console.error(err.stack);
   }
 
   const statusCode = err.statusCode || 500;

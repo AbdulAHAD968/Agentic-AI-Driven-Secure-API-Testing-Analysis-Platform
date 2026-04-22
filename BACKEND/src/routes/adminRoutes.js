@@ -10,6 +10,7 @@ const {
   updateInquiry,
   deleteInquiry,
   replyToInquiry,
+  getAuditLogs,
 } = require("../controllers/adminController");
 const { 
   adminCreateNotification, 
@@ -24,6 +25,7 @@ router.use(protect);
 router.use(authorize("admin"));
 
 router.get("/stats", getStats);
+router.get("/logs", getAuditLogs);
 
 router.get("/users", getUsers);
 router.put("/users/:id", updateUser);

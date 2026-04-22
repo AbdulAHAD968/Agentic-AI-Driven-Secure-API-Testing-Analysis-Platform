@@ -1,8 +1,30 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { getMe } from "@/services/authService";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
-  
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const res = await getMe();
+      if (res.success) {
+        setUser(res.data);
+      }
+    } catch (err) {
+      setUser(null);
+    }
+  };
+
+  if (user) return null;
+
   return (
     <footer className="bg-parchment border-t border-border-cream pt-20 pb-12 px-6">
       <div className="max-w-7xl mx-auto">

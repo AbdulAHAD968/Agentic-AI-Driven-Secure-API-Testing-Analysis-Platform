@@ -168,3 +168,15 @@ exports.replyToInquiry = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+exports.getAuditLogs = async (req, res) => {
+  try {
+    const logs = await require("../models/AuditLog").find()
+      .populate("user", "name email")
+      .sort("-createdAt")
+      .limit(100);
+    res.status(200).json({ success: true, data: logs });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
