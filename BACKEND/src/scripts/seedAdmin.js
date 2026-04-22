@@ -19,7 +19,7 @@ const seedAdmin = async () => {
     const adminData = {
       name: "Super Admin",
       email: "admin@gmail.com",
-      password: "TopicAI@2026",
+      password: "########",
       role: "admin",
       isEmailVerified: true
     };
