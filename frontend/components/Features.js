@@ -19,6 +19,16 @@ export default function Features() {
       title: "RBAC Compliance",
       description: "Strict role-based access control managed via industry-standard identity services for reports and settings.",
       icon: "▣"
+    },
+    {
+      title: "Detailed Audit Trails",
+      description: "Immutable event logging captures all system interactions, codebase scans, and user access events for compliance.",
+      icon: "▤"
+    },
+    {
+      title: "Shift-Left Integration",
+      description: "Seamlessly integrate with your existing CI/CD pipelines to automatically block deployments containing critical threats.",
+      icon: "◩"
     }
   ];
 

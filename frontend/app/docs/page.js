@@ -1,13 +1,13 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Image from "next/image";
-import { 
-  FileCode, 
-  Terminal, 
-  ShieldCheck, 
-  Zap, 
-  ArrowRight, 
-  BookOpen, 
+import {
+  FileCode,
+  Terminal,
+  ShieldCheck,
+  Zap,
+  ArrowRight,
+  BookOpen,
   Search,
   Lock,
   Cpu
@@ -31,16 +31,16 @@ export default function DocsPage() {
     <div className="flex flex-col min-h-screen bg-parchment">
       <Header />
       <div className="flex-grow max-w-7xl mx-auto w-full px-6 py-16 grid grid-cols-1 lg:grid-cols-4 gap-12">
-        
-        
+
+
         <aside className="hidden lg:block space-y-8 sticky top-36 h-fit">
           <div>
             <h4 className="text-xs font-mono uppercase tracking-widest text-olive-gray mb-6">Documentation</h4>
             <nav className="flex flex-col gap-4">
               {sections.map((section) => (
-                <a 
-                  key={section.id} 
-                  href={`#${section.id}`} 
+                <a
+                  key={section.id}
+                  href={`#${section.id}`}
                   className="text-sm font-medium text-stone-gray hover:text-terracotta transition-all flex items-center gap-2 group"
                 >
                   <div className="w-1.5 h-1.5 rounded-full bg-border-cream group-hover:bg-terracotta transition-colors" />
@@ -49,7 +49,7 @@ export default function DocsPage() {
               ))}
             </nav>
           </div>
-          
+
           <div className="p-6 bg-ivory border border-border-cream rounded-3xl">
             <h5 className="text-sm font-serif mb-2">Need help?</h5>
             <p className="text-xs text-olive-gray mb-4">Our security team is available for enterprise support.</p>
@@ -59,10 +59,10 @@ export default function DocsPage() {
           </div>
         </aside>
 
-        
+
         <main className="lg:col-span-3 space-y-24">
-          
-          
+
+
           <section id="started" className="scroll-mt-32">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 bg-near-black text-ivory rounded-xl flex items-center justify-center">
@@ -70,16 +70,16 @@ export default function DocsPage() {
               </div>
               <h2 className="text-4xl font-serif">Quick Start Guide</h2>
             </div>
-            
+
             <p className="text-lg text-olive-gray leading-relaxed mb-12">
               Get up and running with the DevSecOps AI Platform in under 5 minutes. Our platform is designed to be plug-and-play, requiring zero configuration for standard web repositories.
             </p>
 
             <div className="relative aspect-video bg-near-black rounded-[40px] overflow-hidden mb-12 border border-white/5">
-              <Image 
-                src="/assets/docs_getting_started.png" 
-                alt="Getting Started Illustration" 
-                fill 
+              <Image
+                src="/assets/docs_getting_started.png"
+                alt="Getting Started Illustration"
+                fill
                 className="object-cover opacity-80"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-near-black/60 to-transparent" />
@@ -93,7 +93,7 @@ export default function DocsPage() {
               <div className="bg-near-black rounded-3xl p-8 font-mono text-sm text-ivory/90 border border-white/5 shadow-2xl">
                 <div className="flex items-center gap-2 mb-4 opacity-40">
                   <Terminal className="w-4 h-4" />
-                  <span>bash — node v18.0.0</span>
+                  <span>bash - node v18.0.0</span>
                 </div>
                 <p className="text-terracotta"># Initiate secure vault upload</p>
                 <p>curl -X POST https://api.devsecops-ai.com/v1/vault/ingest \</p>
@@ -104,7 +104,7 @@ export default function DocsPage() {
             </div>
           </section>
 
-          
+
           <section id="architecture" className="scroll-mt-32">
             <h2 className="text-3xl font-serif mb-8">System Architecture</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -125,12 +125,12 @@ export default function DocsPage() {
             </div>
           </section>
 
-          
+
           <section id="models" className="scroll-mt-32">
             <div className="flex items-center gap-3 mb-6">
               <h2 className="text-3xl font-serif">AI-Assisted Security</h2>
             </div>
-            
+
             <p className="text-lg text-olive-gray leading-relaxed mb-12">
               Our models go beyond simple sequence matching. We use context-aware LLMs to map business logic and identify deep-seated vulnerabilities.
             </p>
@@ -153,10 +153,10 @@ export default function DocsPage() {
                 </div>
               </div>
               <div className="relative aspect-square bg-near-black rounded-[40px] overflow-hidden border border-white/5">
-                <Image 
-                  src="/assets/docs_api.png" 
-                  alt="API Logic Illustration" 
-                  fill 
+                <Image
+                  src="/assets/docs_api.png"
+                  alt="API Logic Illustration"
+                  fill
                   className="object-cover opacity-70"
                 />
               </div>

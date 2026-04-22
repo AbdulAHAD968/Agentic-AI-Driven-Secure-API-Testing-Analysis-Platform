@@ -128,7 +128,7 @@ exports.contactAcknowledgementEmail = (name) => getBaseTemplate(`
 exports.newsletterWelcomeEmail = () => getBaseTemplate(`
   <h1>Welcome to the Topic AI Newsletter</h1>
   <p>Thank you for subscribing! You're now on our list to receive the latest updates, deep dives into AI automation, and exclusive insights from our team.</p>
-  <p>We promise to respect your inbox—only thoughtful, high-quality content will cross your path.</p>
+  <p>We promise to respect your inbox-only thoughtful, high-quality content will cross your path.</p>
   <p>Stay tuned for our next dispatch.</p>
 `);
 

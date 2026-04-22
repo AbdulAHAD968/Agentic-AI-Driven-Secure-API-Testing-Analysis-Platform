@@ -15,7 +15,11 @@ export default function ProtectedRoute({ children }) {
       try {
         const res = await getMe();
         if (res.success) {
-          setIsAuthenticated(true);
+          if (res.data && res.data.role === "admin") {
+             router.push("/login");
+          } else {
+            setIsAuthenticated(true);
+          }
         } else {
           router.push("/login");
         }

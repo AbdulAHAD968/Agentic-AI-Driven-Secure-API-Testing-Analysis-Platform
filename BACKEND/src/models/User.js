@@ -22,7 +22,7 @@ const userSchema = new mongoose.Schema(
       minlength: 8,
       validate: {
         validator: function(v) {
-          // Only validate complexity if the password is being modified (raw password)
+          
           if (!this.isModified('password')) return true;
           return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(v);
         },

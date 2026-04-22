@@ -26,6 +26,12 @@ export default function LoginPage() {
 
     try {
       const res = await login(formData);
+      
+      if (res.data?.user && res.data.user.role === "admin") {
+        toast.error("Unauthorized: Please use the dedicated Admin Portal.");
+        return;
+      }
+
       if (res.twoFactorRequired) {
         setShow2FA(true);
         setUserId(res.userId);

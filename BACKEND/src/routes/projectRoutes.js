@@ -8,7 +8,7 @@ const {
   deleteProject,
   getProjectStats
 } = require("../controllers/projectController");
-const { protect } = require("../middleware/authMiddleware");
+const { protect, authorize } = require("../middleware/authMiddleware");
 const { audit } = require("../middleware/auditMiddleware");
 const multer = require("multer");
 const path = require("path");
@@ -37,6 +37,7 @@ const upload = multer({
 });
 
 router.use(protect);
+router.use(authorize("user"));
 
 router.route("/")
   .get(getProjects)

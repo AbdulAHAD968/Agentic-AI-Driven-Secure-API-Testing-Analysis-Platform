@@ -13,7 +13,7 @@ export default function AdminAuditPage() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Filtering state
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -38,7 +38,7 @@ export default function AdminAuditPage() {
       : <div className="p-2 bg-red-100 rounded-full text-red-700 shadow-sm"><XCircle className="w-5 h-5" /></div>;
   };
 
-  // Safe lowercasing
+  
   const filteredLogs = logs.filter(log => {
     const matchesStatus = statusFilter === "all" || log.status === statusFilter;
     const searchString = `
@@ -64,7 +64,7 @@ export default function AdminAuditPage() {
         <p className="text-olive-gray font-sans cursor-default">Immutable record of all DevSecOps events, user actions, and security detections.</p>
       </div>
 
-      {/* Analytics Summary */}
+      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-ivory border border-border-cream p-6 rounded-[24px] shadow-sm flex items-center justify-between">
            <div>
@@ -91,7 +91,7 @@ export default function AdminAuditPage() {
 
       <div className="bg-ivory border border-border-cream rounded-[40px] shadow-whisper p-8">
         
-        {/* Filter Bar */}
+        
         <div className="flex flex-col md:flex-row gap-4 mb-8">
            <div className="flex-1 relative">
              <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-stone-gray" />

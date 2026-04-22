@@ -50,7 +50,7 @@ export default function NotificationsPage() {
       toast.success("Broadcast sent successfully");
       setFormData({ title: "", message: "", type: "info", recipient: "all" });
       fetchNotifications();
-      setActiveTab("history"); // Auto switch to history
+      setActiveTab("history"); 
     } catch (err) {
       toast.error("Broadcast failed");
     } finally {
@@ -93,7 +93,7 @@ export default function NotificationsPage() {
     }
   };
 
-  // Stats computation
+  
   const total = notifications.length;
   const types = { info: 0, success: 0, warning: 0, error: 0 };
   notifications.forEach(n => types[n.type] = (types[n.type] || 0) + 1);
@@ -105,7 +105,7 @@ export default function NotificationsPage() {
         <p className="text-olive-gray font-sans">Dispatch system-wide alerts and targeted notifications.</p>
       </div>
 
-      {/* Tabs */}
+      
       <div className="flex gap-4 mb-8 border-b border-border-cream pb-4">
         <button 
           onClick={() => setActiveTab("broadcast")}
@@ -135,7 +135,7 @@ export default function NotificationsPage() {
 
       <div className="text-near-black max-w-4xl">
         
-        {/* COMPONENT: BROADCAST */}
+        
         {activeTab === "broadcast" && (
           <div className="bg-ivory border border-border-cream rounded-[40px] p-10 shadow-whisper">
              <div className="flex items-center gap-4 mb-8">
@@ -206,7 +206,7 @@ export default function NotificationsPage() {
           </div>
         )}
 
-        {/* COMPONENT: HISTORY */}
+        
         {activeTab === "history" && (
           <div className="space-y-6">
              <div className="flex items-center justify-between px-2">
@@ -257,7 +257,7 @@ export default function NotificationsPage() {
           </div>
         )}
 
-        {/* COMPONENT: STATS */}
+        
         {activeTab === "stats" && (
            <div className="grid grid-cols-2 gap-6">
               <div className="col-span-2 bg-near-black text-ivory p-8 rounded-[32px] flex items-center justify-between">
@@ -297,7 +297,7 @@ export default function NotificationsPage() {
         message="Are you sure you want to permanently delete this transmission? This action cannot be undone."
       />
 
-      {/* Bulk Purge Modal */}
+      
       {purgeModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-near-black/40 backdrop-blur-sm" onClick={() => !purgeModal.loading && setPurgeModal({ open: false, days: "7", loading: false })}></div>

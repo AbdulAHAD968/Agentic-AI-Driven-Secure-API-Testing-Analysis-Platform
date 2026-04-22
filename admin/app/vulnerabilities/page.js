@@ -9,7 +9,7 @@ import { ShieldAlert, Activity, FileText, Filter, Cpu } from "lucide-react";
 export default function AdminVulnerabilitiesPage() {
   const [vulnerabilities, setVulnerabilities] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all"); // 'all', 'Critical', 'High', 'Medium', 'Low', 'Info'
+  const [filter, setFilter] = useState("all"); 
   const [projectFilter, setProjectFilter] = useState("all");
 
   useEffect(() => {
@@ -20,7 +20,7 @@ export default function AdminVulnerabilitiesPage() {
     try {
       const res = await getAllAdminVulnerabilities();
       
-      // Default sort by severity (Critical first)
+      
       const sorted = (res.data || []).sort((a, b) => {
         const severities = { "Critical": 5, "High": 4, "Medium": 3, "Low": 2, "Info": 1 };
         return (severities[b.severity] || 0) - (severities[a.severity] || 0);
