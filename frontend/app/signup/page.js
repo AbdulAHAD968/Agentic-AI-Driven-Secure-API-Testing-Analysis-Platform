@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import AuthLayout from "@/components/AuthLayout";
-import { register } from "@/services/authService";
+import { createRegistrationFlow, submitRegistration } from "@/services/authService";
 import { toast } from "react-hot-toast";
 import { User, LogIn, Key, ArrowRight, Eye, EyeOff, CheckCircle2, Circle } from "lucide-react";
 
@@ -11,11 +11,26 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [flow, setFlow] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
   });
+
+  useEffect(() => {
+    // Initialize Ory Registration Flow
+    const initFlow = async () => {
+      try {
+        const flowData = await createRegistrationFlow();
+        setFlow(flowData);
+      } catch (err) {
+        console.error("Error initializing registration flow:", err);
+        toast.error("Failed to initialize registration. Please try again.");
+      }
+    };
+    initFlow();
+  }, []);
 
   const passwordRequirements = [
     { label: "Minimum 8 characters", regex: /.{8,}/ },
@@ -35,13 +50,20 @@ export default function SignupPage() {
       return;
     }
 
+    if (!flow) {
+      toast.error("Registration flow not initialized.");
+      return;
+    }
+
     setLoading(true);
     try {
-      await register(formData);
+      await submitRegistration(flow.id, formData);
       toast.success("Account created successfully!");
       setIsSuccess(true);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Something went wrong.");
+      console.error("Registration error:", err);
+      const message = err.response?.data?.ui?.messages?.[0]?.text || "Something went wrong.";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -50,15 +72,15 @@ export default function SignupPage() {
   if (isSuccess) {
     return (
       <AuthLayout 
-        title="Check your inbox" 
-        subtitle={`We've sent a verification link to ${formData.email}.`}
+        title="Welcome aboard!" 
+        subtitle={`Your account has been created for ${formData.email}.`}
       >
         <div className="text-center py-8">
           <div className="w-16 h-16 bg-warm-sand/30 rounded-full flex items-center justify-center mx-auto mb-6 text-terracotta">
-            <ArrowRight className="w-8 h-8" />
+            <CheckCircle2 className="w-8 h-8" />
           </div>
           <p className="text-olive-gray mb-8 font-sans">
-            Please click the link in the email to verify your account and start using the platform.
+            Your account is ready. You can now log in to the platform and start testing your APIs.
           </p>
           <Link href="/login" className="btn-warm-sand block w-full py-4 text-center">
             Go to Login
@@ -124,7 +146,6 @@ export default function SignupPage() {
             </button>
           </div>
           
-          
           <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
             {passwordRequirements.map((req, i) => {
               const met = req.regex.test(formData.password);
@@ -140,7 +161,7 @@ export default function SignupPage() {
 
         <button 
           type="submit" 
-          disabled={loading}
+          disabled={loading || !flow}
           className="btn-terracotta w-full py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {loading ? "Creating account..." : "Create Account"} <ArrowRight className="w-5 h-5" />

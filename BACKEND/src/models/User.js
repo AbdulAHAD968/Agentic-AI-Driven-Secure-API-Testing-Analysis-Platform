@@ -4,6 +4,11 @@ const crypto = require("crypto");
 
 const userSchema = new mongoose.Schema(
   {
+    oryId: {
+      type: String,
+      unique: true,
+      sparse: true, // Only for users who have logged in via Ory
+    },
     name: {
       type: String,
       required: [true, "Please provide your name"],
