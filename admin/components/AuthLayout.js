@@ -17,12 +17,6 @@ export default function AuthLayout({ children, title, subtitle }) {
 
         {children}
       </div>
-
-      <div className="mt-12 text-center">
-        <p className="text-stone-gray text-xs italic opacity-60">
-          Secure, monitored environment. Authorized personnel only.
-        </p>
-      </div>
     </div>
   );
 }

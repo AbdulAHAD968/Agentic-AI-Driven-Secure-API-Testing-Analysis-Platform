@@ -1,4 +1,5 @@
 import axios from "axios";
+import { ory } from "../lib/ory";
 
 const API_URL = "http://localhost:5000/api/v1/admin";
 const AUTH_URL = "http://localhost:5000/api/v1/auth";
@@ -13,6 +14,51 @@ const authApi = axios.create({
   withCredentials: true,
 });
 
+// --- Ory Authentication ---
+
+export const createLoginFlow = async () => {
+  const { data } = await ory.createBrowserLoginFlow();
+  return data;
+};
+
+export const submitLogin = async (flowId, formData, csrfToken) => {
+  const { data } = await ory.updateLoginFlow({
+    flow: flowId,
+    updateLoginFlowBody: {
+      method: "password",
+      password: formData.password,
+      identifier: formData.email,
+      csrf_token: csrfToken,
+    },
+  });
+  return data;
+};
+
+export const getSession = async () => {
+  try {
+    const { data } = await ory.toSession();
+    return data;
+  } catch (err) {
+    return null;
+  }
+};
+
+// Best-effort Ory logout. A 401 here just means "no active session", which is
+// fine — the caller still wants local state cleared and navigation to happen.
+export const logout = async () => {
+  try {
+    const { data } = await ory.createBrowserLogoutFlow();
+    if (data?.logout_token) {
+      await ory.updateLogoutFlow({ token: data.logout_token });
+    }
+  } catch (err) {
+    if (err.response?.status !== 401) {
+      console.error("Ory logout error:", err.response?.data || err.message);
+    }
+  }
+};
+
+// --- Legacy / Backend specific ---
 
 export const adminLogin = async (credentials) => {
   const response = await authApi.post("/login", credentials);
@@ -25,14 +71,10 @@ export const adminVerify2FA = async (userId, token) => {
 };
 
 export const getMe = async () => {
-    const response = await authApi.get("/me");
-    return response.data;
+  const response = await authApi.get("/me");
+  return response.data;
 };
 
-export const logout = async () => {
-    const response = await authApi.get("/logout");
-    return response.data;
-};
 
 
 export const updateProfile = async (formData) => {

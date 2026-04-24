@@ -29,15 +29,15 @@ export const createRegistrationFlow = async () => {
 /**
  * Submits a registration flow.
  */
-export const submitRegistration = async (flowId, formData) => {
+export const submitRegistration = async (flowId, formData, csrfToken) => {
   const { data } = await ory.updateRegistrationFlow({
     flow: flowId,
     updateRegistrationFlowBody: {
       method: "password",
       password: formData.password,
+      csrf_token: csrfToken,
       traits: {
         email: formData.email,
-        name: formData.name,
       },
     },
   });
@@ -47,13 +47,14 @@ export const submitRegistration = async (flowId, formData) => {
 /**
  * Submits a login flow.
  */
-export const submitLogin = async (flowId, formData) => {
+export const submitLogin = async (flowId, formData, csrfToken) => {
   const { data } = await ory.updateLoginFlow({
     flow: flowId,
     updateLoginFlowBody: {
       method: "password",
       password: formData.password,
       identifier: formData.email,
+      csrf_token: csrfToken,
     },
   });
   return data;
@@ -72,12 +73,21 @@ export const getSession = async () => {
 };
 
 /**
- * Logs the user out.
+ * Logs the user out of Ory. Best-effort: if the session is already gone or the
+ * flow call errors, we still want the caller to proceed with local cleanup.
  */
 export const logout = async () => {
-  const { data } = await ory.createBrowserLogoutFlow();
-  await ory.updateLogoutFlow({ token: data.logout_token });
-  window.location.href = "/login";
+  try {
+    const { data } = await ory.createBrowserLogoutFlow();
+    if (data?.logout_token) {
+      await ory.updateLogoutFlow({ token: data.logout_token });
+    }
+  } catch (err) {
+    // 401 here usually means "no active session", which is fine for logout.
+    if (err.response?.status !== 401) {
+      console.error("Ory logout error:", err.response?.data || err.message);
+    }
+  }
 };
 
 // --- Legacy / Backend specific (Can be removed later) ---
@@ -99,5 +109,20 @@ export const verifyLogin2FA = async (userId, token) => {
 
 export const getMe = async () => {
   const response = await api.get("/me");
+  return response.data;
+};
+
+export const setup2FA = async () => {
+  const response = await api.post("/setup-2fa");
+  return response.data;
+};
+
+export const activate2FA = async (token) => {
+  const response = await api.post("/activate-2fa", { token });
+  return response.data;
+};
+
+export const disable2FA = async (password) => {
+  const response = await api.post("/disable-2fa", { password });
   return response.data;
 };

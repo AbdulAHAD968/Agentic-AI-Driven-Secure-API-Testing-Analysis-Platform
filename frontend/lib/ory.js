@@ -4,7 +4,7 @@ import { Configuration, FrontendApi } from "@ory/client"
 // This avoids CORS issues and ensures cookies are sent correctly.
 export const ory = new FrontendApi(
   new Configuration({
-    basePath: "/api/.ory",
+    basePath: "/api/ory-api",
     baseOptions: {
       withCredentials: true,
     },

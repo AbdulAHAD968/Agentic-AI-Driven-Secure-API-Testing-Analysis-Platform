@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AuthLayout from "@/components/AuthLayout";
-import { createLoginFlow, submitLogin } from "@/services/authService";
+import { createLoginFlow, submitLogin, getSession } from "@/services/authService";
 import { toast } from "react-hot-toast";
 import { LogIn, Key, ArrowRight, Eye, EyeOff } from "lucide-react";
 
@@ -19,18 +19,31 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    // Initialize Ory Login Flow
     const initFlow = async () => {
+      const existing = await getSession();
+      if (existing?.active) {
+        router.replace("/dashboard");
+        return;
+      }
+
       try {
         const flowData = await createLoginFlow();
         setFlow(flowData);
       } catch (err) {
         console.error("Error initializing login flow:", err);
-        toast.error("Failed to initialize login. Please try again.");
+        console.error("Ory response body:", JSON.stringify(err.response?.data, null, 2));
+
+        const reason = err.response?.data?.error?.reason || err.response?.data?.error?.message;
+        if (reason && /session/i.test(reason)) {
+          router.replace("/dashboard");
+          return;
+        }
+
+        toast.error(reason || "Failed to initialize login. Please try again.");
       }
     };
     initFlow();
-  }, []);
+  }, [router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -42,19 +55,33 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await submitLogin(flow.id, formData);
+      const csrfToken = flow.ui.nodes.find(node => node.attributes.name === "csrf_token")?.attributes.value;
+      await submitLogin(flow.id, formData, csrfToken);
       toast.success("Welcome back!");
       router.push("/dashboard");
     } catch (err) {
       console.error("Login error:", err);
-      // Handle Ory error messages
-      const message = err.response?.data?.ui?.messages?.[0]?.text || "Invalid credentials.";
+      console.error("Ory response body:", JSON.stringify(err.response?.data, null, 2));
+
+      const uiMessages = err.response?.data?.ui?.messages || [];
+      const nodeMessages = (err.response?.data?.ui?.nodes || [])
+        .flatMap(node => (node.messages || []).map(m => ({
+          text: m.text,
+          field: node.attributes?.name,
+        })));
+
+      const allMessages = [
+        ...uiMessages.map(m => m.text),
+        ...nodeMessages.map(m => m.field ? `${m.field}: ${m.text}` : m.text),
+      ];
+      const message = allMessages[0] || err.response?.data?.error?.reason || err.response?.data?.error?.message || "Invalid credentials.";
       toast.error(message);
-      
-      // If flow expired or needs refresh, re-initialize
+
       if (err.response?.status === 410 || err.response?.status === 403) {
-        const flowData = await createLoginFlow();
-        setFlow(flowData);
+        try {
+          const flowData = await createLoginFlow();
+          setFlow(flowData);
+        } catch {}
       }
     } finally {
       setLoading(false);

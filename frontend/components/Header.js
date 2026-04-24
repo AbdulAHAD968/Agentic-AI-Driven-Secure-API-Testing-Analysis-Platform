@@ -5,18 +5,33 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getMe, logout } from "@/services/authService";
 import { toast } from "react-hot-toast";
-import { User, Settings, LogOut, ChevronDown, ShieldCheck, Bell } from "lucide-react";
+import { User, Settings, LogOut, ChevronDown, ShieldCheck, Bell, Menu, X } from "lucide-react";
 import NotificationBell from "./NotificationBell";
 
 export default function Header() {
   const router = useRouter();
-  const [user, setUser] = useState(null);
+  // undefined = unknown (render skeleton), null = logged-out, object = logged-in.
+  // SSR and first client render both see undefined so hydration matches.
+  const [user, setUser] = useState(undefined);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
-    checkAuth();
+    // Seed from localStorage synchronously so returning users see the
+    // logged-in UI on the first paint, not the logged-out one.
+    try {
+      const cached = localStorage.getItem("user");
+      if (cached) {
+        setUser(JSON.parse(cached));
+      } else {
+        setUser(null);
+      }
+    } catch {
+      setUser(null);
+    }
 
+    checkAuth();
 
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -33,6 +48,9 @@ export default function Header() {
       if (res.success) {
         setUser(res.data);
         localStorage.setItem("user", JSON.stringify(res.data));
+      } else {
+        setUser(null);
+        localStorage.removeItem("user");
       }
     } catch (err) {
       setUser(null);
@@ -41,15 +59,17 @@ export default function Header() {
   };
 
   const handleLogout = async () => {
+    setDropdownOpen(false);
+    setMobileMenuOpen(false);
+    await logout();
+    setUser(null);
     try {
-      await logout();
-      toast.success("Logged out");
-      setUser(null);
       localStorage.removeItem("user");
-      router.push("/login");
-    } catch (err) {
-      toast.error("Logout failed");
-    }
+    } catch {}
+    toast.success("Logged out");
+    // Hard reload so any server components / cached state pick up the cleared
+    // cookies. router.push keeps the SPA tree warm and can leak auth UI.
+    window.location.href = "/login";
   };
 
   return (
@@ -59,9 +79,15 @@ export default function Header() {
           Topic AI
         </Link>
 
-
+        {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-8">
-          {user ? (
+          {user === undefined ? (
+            <>
+              <div className="h-4 w-16 bg-warm-sand/30 rounded animate-pulse" />
+              <div className="h-4 w-16 bg-warm-sand/30 rounded animate-pulse" />
+              <div className="h-4 w-16 bg-warm-sand/30 rounded animate-pulse" />
+            </>
+          ) : user ? (
             <>
               <Link href="/dashboard/projects" className="text-sm font-medium text-stone-gray hover:text-terracotta transition-colors">Projects</Link>
               <Link href="/dashboard/logs" className="text-sm font-medium text-stone-gray hover:text-terracotta transition-colors">Logs</Link>
@@ -77,8 +103,17 @@ export default function Header() {
           )}
         </div>
 
+        {/* Desktop Auth/User Area */}
         <div className="hidden md:flex items-center gap-10">
-          {user ? (
+          {user === undefined ? (
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-warm-sand/30 animate-pulse" />
+              <div className="hidden lg:block space-y-1">
+                <div className="h-3 w-24 bg-warm-sand/30 rounded animate-pulse" />
+                <div className="h-2 w-16 bg-warm-sand/20 rounded animate-pulse" />
+              </div>
+            </div>
+          ) : user ? (
             <div className="flex items-center gap-4">
               <NotificationBell />
               <div className="relative" ref={dropdownRef}>
@@ -101,7 +136,6 @@ export default function Header() {
                   </div>
                   <ChevronDown className={`w-4 h-4 text-stone-gray transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
-
 
                 {dropdownOpen && (
                   <div className="absolute right-0 mt-3 w-56 bg-ivory border border-border-cream rounded-2xl shadow-whisper py-2 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -151,7 +185,68 @@ export default function Header() {
             </div>
           )}
         </div>
+
+        {/* Mobile Toggle */}
+        <button 
+          className="md:hidden text-near-black hover:text-terracotta transition-colors"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        >
+          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
       </nav>
+
+      {/* Mobile Navigation Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-parchment border-b border-border-cream animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="px-6 py-8 space-y-6">
+            <div className="flex flex-col gap-6">
+              {user === undefined ? (
+                <div className="space-y-4">
+                  <div className="h-5 w-24 bg-warm-sand/30 rounded animate-pulse" />
+                  <div className="h-5 w-24 bg-warm-sand/30 rounded animate-pulse" />
+                  <div className="h-5 w-24 bg-warm-sand/30 rounded animate-pulse" />
+                </div>
+              ) : user ? (
+                <>
+                  <Link href="/dashboard/projects" className="text-lg font-serif text-near-black" onClick={() => setMobileMenuOpen(false)}>Projects</Link>
+                  <Link href="/dashboard/logs" className="text-lg font-serif text-near-black" onClick={() => setMobileMenuOpen(false)}>Logs</Link>
+                  <Link href="/dashboard/reports" className="text-lg font-serif text-near-black" onClick={() => setMobileMenuOpen(false)}>Reports</Link>
+                  <Link href="/dashboard" className="text-lg font-serif text-terracotta font-bold" onClick={() => setMobileMenuOpen(false)}>My Dashboard</Link>
+                </>
+              ) : (
+                <>
+                  <Link href="/overview" className="text-lg font-serif text-near-black" onClick={() => setMobileMenuOpen(false)}>Overview</Link>
+                  <Link href="/pricing" className="text-lg font-serif text-near-black" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
+                  <Link href="/models" className="text-lg font-serif text-near-black" onClick={() => setMobileMenuOpen(false)}>Models</Link>
+                  <Link href="/docs" className="text-lg font-serif text-near-black" onClick={() => setMobileMenuOpen(false)}>Docs</Link>
+                </>
+              )}
+            </div>
+            
+            <div className="pt-6 border-t border-border-cream">
+              {user === undefined ? (
+                <div className="h-12 w-full bg-warm-sand/20 rounded-xl animate-pulse" />
+              ) : user ? (
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-3 text-red-500 font-bold"
+                >
+                  <LogOut className="w-5 h-5" /> Logout
+                </button>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  <Link href="/login" className="w-full py-4 text-center border border-border-cream rounded-xl" onClick={() => setMobileMenuOpen(false)}>
+                    Sign in
+                  </Link>
+                  <Link href="/signup" className="btn-terracotta w-full py-4 text-center" onClick={() => setMobileMenuOpen(false)}>
+                    Get Started
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

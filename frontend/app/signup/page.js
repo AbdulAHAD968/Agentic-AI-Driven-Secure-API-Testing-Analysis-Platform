@@ -57,12 +57,27 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      await submitRegistration(flow.id, formData);
+      const csrfToken = flow.ui.nodes.find(node => node.attributes.name === "csrf_token")?.attributes.value;
+      await submitRegistration(flow.id, formData, csrfToken);
       toast.success("Account created successfully!");
       setIsSuccess(true);
     } catch (err) {
       console.error("Registration error:", err);
-      const message = err.response?.data?.ui?.messages?.[0]?.text || "Something went wrong.";
+      console.error("Ory response body:", JSON.stringify(err.response?.data, null, 2));
+
+      const uiMessages = err.response?.data?.ui?.messages || [];
+      const nodeMessages = (err.response?.data?.ui?.nodes || [])
+        .flatMap(node => (node.messages || []).map(m => ({
+          text: m.text,
+          field: node.attributes?.name,
+        })));
+
+      const allMessages = [
+        ...uiMessages.map(m => m.text),
+        ...nodeMessages.map(m => m.field ? `${m.field}: ${m.text}` : m.text),
+      ];
+
+      const message = allMessages[0] || err.response?.data?.error?.message || "Registration failed. Check the console for the Ory response.";
       toast.error(message);
     } finally {
       setLoading(false);
