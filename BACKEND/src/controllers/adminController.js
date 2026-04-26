@@ -46,15 +46,23 @@ exports.getUsers = async (req, res) => {
 
 exports.updateUser = async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, req.body, {
+    // Whitelist allowed fields to prevent mass assignment
+    const allowedFields = { name: req.body.name, email: req.body.email, active: req.body.active };
+    // Only admins can change roles
+    if (req.body.role !== undefined) {
+      allowedFields.role = req.body.role;
+    }
+    const user = await User.findByIdAndUpdate(req.params.id, allowedFields, {
       new: true,
       runValidators: true,
     });
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
     res.status(200).json({ success: true, data: user });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 
 
@@ -85,13 +93,21 @@ exports.getSubscribers = async (req, res) => {
 exports.sendNewsletter = async (req, res) => {
   try {
     const { subject, htmlContent } = req.body;
+
+    if (!subject || !htmlContent) {
+      return res.status(400).json({ success: false, message: "Subject and content are required." });
+    }
+
+    // Strip any raw <script> tags from admin-provided HTML to reduce injection risk
+    const safeHtmlContent = htmlContent.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
+
     const subscribers = await Newsletter.find();
 
     const emailPromises = subscribers.map((sub) =>
       sendEmail({
         email: sub.email,
         subject: subject,
-        html: htmlContent,
+        html: safeHtmlContent,
       })
     );
 
@@ -105,6 +121,7 @@ exports.sendNewsletter = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 
 
@@ -242,8 +259,13 @@ exports.purgeAuditLogs = async (req, res) => {
     let query = req.user.role === "admin" ? {} : { user: req.user.id };
 
     if (days && days !== "all") {
+      // Strictly validate: must be a positive integer
+      const parsedDays = parseInt(days, 10);
+      if (!Number.isInteger(parsedDays) || parsedDays < 0 || String(parsedDays) !== String(days)) {
+        return res.status(400).json({ success: false, message: "Invalid 'days' parameter. Must be a non-negative integer." });
+      }
       const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - parseInt(days));
+      cutoff.setDate(cutoff.getDate() - parsedDays);
       query.createdAt = { $lt: cutoff };
     }
 
@@ -257,6 +279,7 @@ exports.purgeAuditLogs = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 exports.getAllProjects = async (req, res) => {
   try {

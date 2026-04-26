@@ -7,6 +7,10 @@ dotenv.config({ path: "./.env" });
 
 const seedAdmin = async () => {
   try {
+    if (!process.env.ADMIN_PASS) {
+      console.error("ERROR: ADMIN_PASS is not set in your .env file. Refusing to seed with a default password.");
+      process.exit(1);
+    }
 
     const baseUri = process.env.MONGODB_URL || "mongodb://localhost:27017";
     const dbName = process.env.MONGODB_DB || "APiSecurity";

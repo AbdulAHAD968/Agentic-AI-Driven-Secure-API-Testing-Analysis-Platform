@@ -1,4 +1,16 @@
-const getBaseTemplate = (content) => `
+// Helper to escape user-controlled strings before embedding them into HTML email templates.
+// This prevents HTML injection and XSS through email content.
+const escapeHtml = (str) => {
+  if (typeof str !== "string") return String(str ?? "");
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
+
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -108,22 +120,24 @@ exports.twoFactorEmail = (code) => getBaseTemplate(`
 `);
 
 exports.contactNotificationEmail = (details) => getBaseTemplate(`
-  <h1>New Inquiry from ${details.name}</h1>
+  <h1>New Inquiry from ${escapeHtml(details.name)}</h1>
   <p>You have a new message from the contact form:</p>
   <div style="background-color: #faf9f5; border: 1px solid #e8e6dc; border-radius: 8px; padding: 20px; margin: 20px 0;">
-    <p><strong>Name:</strong> ${details.name}</p>
-    <p><strong>Email:</strong> ${details.email}</p>
-    <p><strong>Subject:</strong> ${details.subject}</p>
-    <p><strong>Message:</strong><br/>${details.message}</p>
+    <p><strong>Name:</strong> ${escapeHtml(details.name)}</p>
+    <p><strong>Email:</strong> ${escapeHtml(details.email)}</p>
+    <p><strong>Subject:</strong> ${escapeHtml(details.subject)}</p>
+    <p><strong>Message:</strong><br/>${escapeHtml(details.message)}</p>
   </div>
 `);
 
+
 exports.contactAcknowledgementEmail = (name) => getBaseTemplate(`
   <h1>We've received your message</h1>
-  <p>Hello ${name},</p>
+  <p>Hello ${escapeHtml(name)},</p>
   <p>Thank you for reaching out to Topic AI. This is a confirmation that we've received your message and our team will get back to you shortly.</p>
   <p>If you have any urgent matters, feel free to reply to this email.</p>
 `);
+
 
 exports.newsletterWelcomeEmail = () => getBaseTemplate(`
   <h1>Welcome to the Topic AI Newsletter</h1>
@@ -134,10 +148,11 @@ exports.newsletterWelcomeEmail = () => getBaseTemplate(`
 
 exports.contactReplyEmail = (name, message) => getBaseTemplate(`
   <h1>Reply to your inquiry</h1>
-  <p>Hello ${name},</p>
+  <p>Hello ${escapeHtml(name)},</p>
   <p>Our team has reviewed your message and would like to provide the following update:</p>
   <div style="background-color: #faf9f5; border: 1px solid #e8e6dc; border-radius: 8px; padding: 24px; margin: 24px 0; font-family: 'Newsreader', serif; font-size: 18px; line-height: 1.6; color: #141413; white-space: pre-wrap;">
-    ${message}
+    ${escapeHtml(message)}
   </div>
   <p>If you have any further questions, simply reply to this email and we'll be happy to assist.</p>
 `);
+

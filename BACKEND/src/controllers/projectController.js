@@ -22,7 +22,10 @@ exports.createProject = async (req, res) => {
     const encryptedContent = vaultService.encrypt(fileBuffer);
     
     
-    const vaultPath = path.join(__dirname, "../../vault", `${Date.now()}_${req.file.originalname}.enc`);
+    // Sanitize filename to prevent directory traversal attacks
+    const safeFileName = path.basename(req.file.originalname).replace(/[^a-zA-Z0-9._-]/g, "_");
+    const vaultPath = path.join(__dirname, "../../vault", `${Date.now()}_${safeFileName}.enc`);
+
     if (!fs.existsSync(path.dirname(vaultPath))) {
       fs.mkdirSync(path.dirname(vaultPath), { recursive: true });
     }
