@@ -1,108 +1,92 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AuthLayout from "@/components/AuthLayout";
-import { login, verifyLogin2FA } from "@/services/authService";
+import { createLoginFlow, submitLogin, getSession } from "@/services/authService";
 import { toast } from "react-hot-toast";
-import { LogIn, Key, ArrowRight, ShieldCheck, Eye, EyeOff } from "lucide-react";
+import { LogIn, Key, ArrowRight, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [show2FA, setShow2FA] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [userId, setUserId] = useState("");
-  const [token, setToken] = useState("");
+  const [flow, setFlow] = useState(null);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const res = await login(formData);
-      
-      if (res.data?.user && res.data.user.role === "admin") {
-        toast.error("Unauthorized: Please use the dedicated Admin Portal.");
+  useEffect(() => {
+    const initFlow = async () => {
+      const existing = await getSession();
+      if (existing?.active) {
+        router.replace("/dashboard");
         return;
       }
 
-      if (res.twoFactorRequired) {
-        setShow2FA(true);
-        setUserId(res.userId);
-        toast.success("Please provide your 2FA code.");
-      } else {
-        toast.success("Welcome back!");
-        router.push("/dashboard");
+      try {
+        const flowData = await createLoginFlow();
+        setFlow(flowData);
+      } catch (err) {
+        console.error("Error initializing login flow:", err);
+        console.error("Ory response body:", JSON.stringify(err.response?.data, null, 2));
+
+        const reason = err.response?.data?.error?.reason || err.response?.data?.error?.message;
+        if (reason && /session/i.test(reason)) {
+          router.replace("/dashboard");
+          return;
+        }
+
+        toast.error(reason || "Failed to initialize login. Please try again.");
       }
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Invalid credentials.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    initFlow();
+  }, [router]);
 
-  const handle2FAVerify = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    
+    if (!flow) {
+      toast.error("Login flow not initialized.");
+      return;
+    }
 
+    setLoading(true);
     try {
-      await verifyLogin2FA(userId, token);
+      const csrfToken = flow.ui.nodes.find(node => node.attributes.name === "csrf_token")?.attributes.value;
+      await submitLogin(flow.id, formData, csrfToken);
       toast.success("Welcome back!");
       router.push("/dashboard");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Invalid 2FA code.");
+      console.error("Login error:", err);
+      console.error("Ory response body:", JSON.stringify(err.response?.data, null, 2));
+
+      const uiMessages = err.response?.data?.ui?.messages || [];
+      const nodeMessages = (err.response?.data?.ui?.nodes || [])
+        .flatMap(node => (node.messages || []).map(m => ({
+          text: m.text,
+          field: node.attributes?.name,
+        })));
+
+      const allMessages = [
+        ...uiMessages.map(m => m.text),
+        ...nodeMessages.map(m => m.field ? `${m.field}: ${m.text}` : m.text),
+      ];
+      const message = allMessages[0] || err.response?.data?.error?.reason || err.response?.data?.error?.message || "Invalid credentials.";
+      toast.error(message);
+
+      if (err.response?.status === 410 || err.response?.status === 403) {
+        try {
+          const flowData = await createLoginFlow();
+          setFlow(flowData);
+        } catch {}
+      }
     } finally {
       setLoading(false);
     }
   };
-
-  if (show2FA) {
-    return (
-      <AuthLayout 
-        title="Double-check it's you" 
-        subtitle="Enter the 6-digit code from your authenticator app."
-      >
-        <form onSubmit={handle2FAVerify} className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-charcoal-warm font-sans flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4" /> Authentication Code
-            </label>
-            <input 
-              type="text" 
-              required
-              className="w-full bg-warm-sand/20 border border-border-cream rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400/20 focus:border-blue-400 transition-all font-sans text-center text-2xl tracking-[0.5em] font-semibold"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder="000000"
-              maxLength={6}
-            />
-          </div>
-
-          <button 
-            type="submit" 
-            disabled={loading}
-            className="btn-terracotta w-full py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {loading ? "Verifying..." : "Verify Code"} <ArrowRight className="w-5 h-5" />
-          </button>
-          
-          <button 
-            type="button"
-            className="w-full text-center text-sm text-stone-gray hover:text-near-black transition-colors"
-            onClick={() => setShow2FA(false)}
-          >
-            Back to login
-          </button>
-        </form>
-      </AuthLayout>
-    );
-  }
 
   return (
     <AuthLayout 
@@ -154,7 +138,7 @@ export default function LoginPage() {
 
         <button 
           type="submit" 
-          disabled={loading}
+          disabled={loading || !flow}
           className="btn-terracotta w-full py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {loading ? "Signing in..." : "Continue"} <ArrowRight className="w-5 h-5" />

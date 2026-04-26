@@ -4,6 +4,11 @@ const crypto = require("crypto");
 
 const userSchema = new mongoose.Schema(
   {
+    oryId: {
+      type: String,
+      unique: true,
+      sparse: true, // Only for users who have logged in via Ory
+    },
     name: {
       type: String,
       required: [true, "Please provide your name"],
@@ -18,17 +23,15 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, "Please provide a password"],
-      minlength: 8,
+      select: false,
       validate: {
         validator: function(v) {
-          
+          if (!v) return true; // Allow empty for Ory users
           if (!this.isModified('password')) return true;
           return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(v);
         },
         message: "Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character."
       },
-      select: false,
     },
     role: {
       type: String,

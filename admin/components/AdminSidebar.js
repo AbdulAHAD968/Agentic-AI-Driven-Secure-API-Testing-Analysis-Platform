@@ -27,13 +27,13 @@ export default function AdminSidebar({ isCollapsed, setIsCollapsed }) {
   ];
 
   const handleLogout = async () => {
+    await logout();
     try {
-      await logout();
-      toast.success("Admin logged out");
-      router.push("/login");
-    } catch (err) {
-      toast.error("Logout failed");
-    }
+      localStorage.removeItem("user");
+    } catch {}
+    toast.success("Admin logged out");
+    // Hard reload so cleared cookies and server-rendered admin guard re-evaluate.
+    window.location.href = "/login";
   };
 
   return (
