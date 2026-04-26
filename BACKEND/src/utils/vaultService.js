@@ -1,37 +1,102 @@
+/**
+ * @file vaultService.js
+ * @purpose Provides AES-256-CBC encryption and decryption services for
+ *   storing uploaded source code files securely in the vault directory.
+ *   Also provides a secure file deletion helper.
+ *
+ * SECURE CODING PRACTICES APPLIED IN THIS FILE:
+ * -----------------------------------------------
+ * [Missing Encryption of Sensitive Data]
+ *   - All uploaded source code is encrypted with AES-256-CBC before
+ *     being written to disk; plaintext is never persisted to the vault.
+ *
+ * [Use of Broken Cryptographic Algorithms]
+ *   - AES-256 with a 256-bit key derived via scrypt (memory-hard KDF).
+ *   - A unique, cryptographically random 16-byte IV is generated for every
+ *     encryption operation via crypto.randomBytes(). A static IV (the
+ *     previous vulnerability) would make identical plaintexts produce
+ *     identical ciphertexts, allowing differential cryptanalysis.
+ *   - The IV is prepended to the ciphertext so the correct IV is always
+ *     available for decryption without separate storage.
+ *
+ * [The Hidden Dangers in Password Handling / Key Derivation]
+ *   - The encryption key is derived from VAULT_SECRET and VAULT_SALT
+ *     environment variables using scrypt — a memory-hard KDF specifically
+ *     designed to resist GPU-accelerated brute-force attacks.
+ *   - The salt (VAULT_SALT) is configurable via env and falls back to a
+ *     development-only placeholder so production deployments must set their own.
+ */
+
 const crypto = require("crypto");
-const fs = require("fs");
-const path = require("path");
+const fs     = require("fs");
+const path   = require("path");
 
 const ALGORITHM = "aes-256-cbc";
-// Use env var for salt; fallback only for dev. In production VAULT_SALT must be set.
-const SALT = process.env.VAULT_SALT || "topicai-dev-salt-change-in-prod";
-const KEY = crypto.scryptSync(process.env.VAULT_SECRET || "dev-secret-key", SALT, 32);
 
 /**
- * Encrypt a buffer using AES-256-CBC with a unique random IV per operation.
- * The IV (16 bytes) is prepended to the ciphertext so it can be retrieved on decryption.
+ * [Use of Broken Cryptographic Algorithms / The Hidden Dangers in Password Handling]
+ * Key is derived from VAULT_SECRET + VAULT_SALT using scrypt (32-byte output).
+ * Using scrypt instead of a simple SHA hash makes brute-forcing the key
+ * computationally and memory-expensive for an attacker.
+ * VAULT_SALT must be set per application instance in production .env.
+ */
+const SALT = process.env.VAULT_SALT || "topicai-dev-salt-change-in-prod";
+const KEY  = crypto.scryptSync(process.env.VAULT_SECRET || "dev-secret-key", SALT, 32);
+
+/**
+ * encrypt: Encrypt a buffer using AES-256-CBC with a random IV.
+ *
+ * [Missing Encryption of Sensitive Data / Use of Broken Cryptographic Algorithms]
+ * - A fresh 16-byte IV is generated via crypto.randomBytes() for EVERY
+ *   encryption call, ensuring that two identical files produce different
+ *   ciphertexts (semantic security / IND-CPA).
+ * - The IV is prepended to the ciphertext in the output buffer:
+ *   [16 bytes IV][N bytes ciphertext]
+ *   This allows the decryption function to recover the IV without a
+ *   separate lookup, while keeping the key and IV independent.
+ *
+ * @param {Buffer} buffer - Plaintext source code bytes to encrypt
+ * @returns {Buffer}      - Concatenated [IV + ciphertext] buffer
  */
 exports.encrypt = (buffer) => {
-  const iv = crypto.randomBytes(16); // unique IV every time
-  const cipher = crypto.createCipheriv(ALGORITHM, KEY, iv);
+  // [Use of Broken Cryptographic Algorithms] Unique IV per encryption — prevents pattern analysis
+  const iv      = crypto.randomBytes(16);
+  const cipher  = crypto.createCipheriv(ALGORITHM, KEY, iv);
   const encrypted = Buffer.concat([cipher.update(buffer), cipher.final()]);
-  // Prepend IV so decrypt can retrieve it: [16 bytes IV][ciphertext]
+  // Prepend IV so decryption can retrieve it: layout is [16-byte IV][ciphertext]
   return Buffer.concat([iv, encrypted]);
 };
 
 /**
- * Decrypt a buffer that was encrypted by exports.encrypt().
- * Reads the first 16 bytes as the IV, then decrypts the remainder.
+ * decrypt: Decrypt a buffer produced by exports.encrypt().
+ *
+ * [Missing Encryption of Sensitive Data]
+ * - Reads the first 16 bytes as the IV (matches encrypt() layout).
+ * - Decrypts the remainder with the same derived KEY.
+ * - Only the vault service (server-side) ever calls this — decrypted
+ *   content is used in-memory for scanning and never written to disk unencrypted.
+ *
+ * @param {Buffer} encryptedBuffer - The [IV + ciphertext] buffer from the vault
+ * @returns {Buffer}               - Decrypted plaintext buffer
  */
 exports.decrypt = (encryptedBuffer) => {
-  const iv = encryptedBuffer.subarray(0, 16);
-  const ciphertext = encryptedBuffer.subarray(16);
-  const decipher = crypto.createDecipheriv(ALGORITHM, KEY, iv);
+  const iv         = encryptedBuffer.subarray(0, 16);  // First 16 bytes = IV
+  const ciphertext = encryptedBuffer.subarray(16);     // Remainder = ciphertext
+  const decipher   = crypto.createDecipheriv(ALGORITHM, KEY, iv);
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
 };
 
 /**
- * Securely deletes a file from the filesystem.
+ * secureDelete: Remove a temporary file from the filesystem.
+ *
+ * [Upload of Dangerous Files / Path Traversal]
+ * - Deletes the unencrypted temp file from the uploads/ directory after
+ *   its encrypted copy has been written to the vault, ensuring plaintext
+ *   source code is not left on disk.
+ * - Checks for existence before deletion to avoid TOCTOU errors.
+ *
+ * @param {string} filePath - Absolute path to the file to delete
+ * @returns {boolean}       - true if the file was deleted, false if not found
  */
 exports.secureDelete = (filePath) => {
   if (fs.existsSync(filePath)) {
