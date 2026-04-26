@@ -70,11 +70,18 @@ const sanitizeValue = (val, key = "") => {
 };
 
 /**
- * deepSanitize: Recursively sanitize all string values in an object.
+ * deepSanitize: Recursively sanitize all string values and remove MongoDB
+ * operator keys (keys starting with `$`) from an object.
  *
- * [Reliance on Untrusted Inputs]
- * Traverses nested objects/arrays to ensure that injection payloads
- * hidden in deeply nested request body structures are also neutralized.
+ * [NoSQL Injection / Reliance on Untrusted Inputs]
+ * express-mongo-sanitize v2 is incompatible with Express 5 because Express 5
+ * makes req.query a read-only getter; the package throws
+ * "Cannot set property query of #<IncomingMessage> which has only a getter"
+ * on every request. This function replaces that package by:
+ *   1. Deleting any key starting with `$` (MongoDB operator injection via key names).
+ *   2. Replacing `$` in string values (value-level injection).
+ * Both strategies together match the protection previously provided by
+ * express-mongo-sanitize.
  *
  * @param {Object|Array} obj - The object to sanitize in-place
  * @returns {Object|Array}   - The same object with all strings sanitized
@@ -82,6 +89,16 @@ const sanitizeValue = (val, key = "") => {
 const deepSanitize = (obj) => {
   if (obj && typeof obj === "object") {
     Object.keys(obj).forEach((key) => {
+      /**
+       * [NoSQL Injection] Keys beginning with `$` are MongoDB operator names
+       * (e.g. `$gt`, `$where`, `$ne`). Delete them so callers cannot inject
+       * operator objects such as `{ "password": { "$gt": "" } }`.
+       */
+      if (typeof key === "string" && key.startsWith("$")) {
+        delete obj[key];
+        return;
+      }
+
       const value = obj[key];
       if (value && typeof value === "object") {
         deepSanitize(value); // Recurse for nested objects and arrays
@@ -106,9 +123,21 @@ const deepSanitize = (obj) => {
  * @param {Function} next - Calls the next middleware in the chain
  */
 const customSanitizer = (req, res, next) => {
-  if (req.body)   deepSanitize(req.body);    // Sanitize parsed JSON/form body
-  if (req.query)  deepSanitize(req.query);   // Sanitize query string parameters
-  if (req.params) deepSanitize(req.params);  // Sanitize URL route parameters
+  /**
+   * [NoSQL Injection / XSS] Sanitize all three input surfaces.
+   *
+   * req.body and req.params are plain mutable objects — deepSanitize operates
+   * in-place on them safely.
+   *
+   * req.query is a read-only getter in Express 5 (the object returned by the
+   * getter CAN have its own properties mutated, but the getter itself cannot be
+   * reassigned). deepSanitize therefore mutates the query object's properties
+   * directly without trying to replace req.query itself — this is why
+   * express-mongo-sanitize throws here and is not used.
+   */
+  if (req.body)   deepSanitize(req.body);
+  if (req.query)  deepSanitize(req.query);
+  if (req.params) deepSanitize(req.params);
 
   next();
 };

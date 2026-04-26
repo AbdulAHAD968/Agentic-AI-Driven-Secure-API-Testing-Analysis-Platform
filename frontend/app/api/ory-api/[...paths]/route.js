@@ -22,6 +22,25 @@ export async function DELETE(request, { params }) {
 
 const PROXY_BASE = "/api/ory-api";
 
+/** Upstream request timeout so a slow Ory network cannot hang the login UI forever. */
+const UPSTREAM_FETCH_TIMEOUT_MS = 30_000;
+
+/**
+ * Resolve Ory project base URL for server-side proxying only (never exposed in client JS).
+ * Prefer ORY_SDK_URL in .env.local so the tenant URL is not bundled into the browser.
+ * NEXT_PUBLIC_ORY_SDK_URL is supported for compatibility.
+ * In development only, a last-resort fallback keeps local login working when env is not set yet;
+ * production must set ORY_SDK_URL or NEXT_PUBLIC_ORY_SDK_URL.
+ */
+function resolveOrySdkUrl() {
+  const fromEnv = process.env.ORY_SDK_URL || process.env.NEXT_PUBLIC_ORY_SDK_URL;
+  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  if (process.env.NODE_ENV === "development") {
+    return "https://suspicious-agnesi-frtp7mro6t.projects.oryapis.com";
+  }
+  return null;
+}
+
 const FORWARDED_REQUEST_HEADERS = [
   "accept",
   "accept-charset",
@@ -44,12 +63,13 @@ function rewriteSetCookie(cookieHeader) {
 async function handleProxy(request, params) {
   const { paths } = await params;
   const path = paths.join("/");
-  const configuredSdkUrl = process.env.NEXT_PUBLIC_ORY_SDK_URL;
-  if (!configuredSdkUrl) {
-    // [API8:2023 - Security Misconfiguration] Fail closed instead of using a hardcoded Ory tenant.
-    return NextResponse.json({ error: "Authentication service is not configured." }, { status: 500 });
+  const sdkUrl = resolveOrySdkUrl();
+  if (!sdkUrl) {
+    return NextResponse.json(
+      { error: "Authentication service is not configured. Set ORY_SDK_URL or NEXT_PUBLIC_ORY_SDK_URL." },
+      { status: 500 }
+    );
   }
-  const sdkUrl = configuredSdkUrl.replace(/\/$/, "");
   const url = `${sdkUrl}/${path}${request.nextUrl.search}`;
 
   const requestHeaders = new Headers();
@@ -63,6 +83,9 @@ async function handleProxy(request, params) {
   requestHeaders.set("Ory-Base-URL-Rewrite", "false");
   requestHeaders.set("Ory-No-Custom-Domain-Redirect", "true");
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), UPSTREAM_FETCH_TIMEOUT_MS);
+
   try {
     const response = await fetch(url, {
       method: request.method,
@@ -70,12 +93,13 @@ async function handleProxy(request, params) {
       body: request.method !== "GET" && request.method !== "HEAD" ? await request.arrayBuffer() : undefined,
       cache: "no-store",
       redirect: "manual",
+      signal: controller.signal,
     });
 
     const responseHeaders = new Headers();
     response.headers.forEach((value, key) => {
       const k = key.toLowerCase();
-      if (k === "content-encoding" || k === "transfer-encoding" || k === "content-length" || k === "set-cookie" || k === "location") {
+      if (k === "content-encoding" || k === "transfer-encoding" || k === "content-length" || k === "set-cookie") {
         return;
       }
       responseHeaders.append(key, value);
@@ -111,6 +135,11 @@ async function handleProxy(request, params) {
   } catch (error) {
     console.error("Ory Proxy Error:", error);
     // [Error Handling] Do not expose upstream hostnames or SDK internals to the browser.
-    return NextResponse.json({ error: "Authentication proxy error." }, { status: 500 });
+    const status = error?.name === "AbortError" ? 504 : 500;
+    const message =
+      error?.name === "AbortError" ? "Authentication service timed out." : "Authentication proxy error.";
+    return NextResponse.json({ error: message }, { status });
+  } finally {
+    clearTimeout(timeoutId);
   }
 }

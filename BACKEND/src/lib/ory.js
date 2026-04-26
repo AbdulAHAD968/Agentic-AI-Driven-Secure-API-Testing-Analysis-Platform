@@ -16,12 +16,13 @@
  *     session validity before any route handler executes.
  *
  * [API8:2023 - Security Misconfiguration]
- *   - No default credentials or insecure fallback behaviors are configured.
- *   - ORY_SDK_URL is mandatory; hardcoded tenant fallbacks can silently send
- *     authentication traffic to the wrong cloud project.
+ *   - Production requires ORY_SDK_URL so session verification never targets the wrong tenant.
+ *   - Development may fall back to the shared class Ory project URL only when ORY_SDK_URL is unset.
  */
 
 const { Configuration, FrontendApi } = require("@ory/client");
+
+const DEV_ORY_FALLBACK = "https://suspicious-agnesi-frtp7mro6t.projects.oryapis.com";
 
 /**
  * ory: Ory FrontendApi client for session verification.
@@ -31,13 +32,17 @@ const { Configuration, FrontendApi } = require("@ory/client");
  * ORY_SDK_URL. withCredentials: true is required so that the session cookie
  * sent by the browser is forwarded to Ory for validation.
  */
-if (!process.env.ORY_SDK_URL) {
+const resolvedOryBasePath =
+  process.env.ORY_SDK_URL ||
+  (process.env.NODE_ENV === "development" ? DEV_ORY_FALLBACK : "");
+
+if (!resolvedOryBasePath) {
   throw new Error("ORY_SDK_URL must be configured for server-side Ory session verification.");
 }
 
 const ory = new FrontendApi(
   new Configuration({
-    basePath:    process.env.ORY_SDK_URL,
+    basePath:    resolvedOryBasePath.replace(/\/$/, ""),
     baseOptions: {
       withCredentials: true, // Forward session cookies to Ory for server-side validation
     },

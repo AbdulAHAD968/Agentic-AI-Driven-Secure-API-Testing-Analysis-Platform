@@ -19,27 +19,41 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
+    const INIT_MS = 30_000;
+    const withTimeout = (promise, ms) =>
+      Promise.race([
+        promise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("LOGIN_FLOW_TIMEOUT")), ms)
+        ),
+      ]);
+
     const initFlow = async () => {
-      const existing = await getSession();
+      let existing = null;
+      try {
+        existing = await getSession();
+      } catch {
+        existing = null;
+      }
       if (existing?.active) {
         router.replace("/dashboard");
         return;
       }
 
       try {
-        const flowData = await createLoginFlow();
+        const flowData = await withTimeout(createLoginFlow(), INIT_MS);
         setFlow(flowData);
       } catch (err) {
         if (process.env.NODE_ENV === "development") {
           console.error("Error initializing login flow:", err);
         }
-        if (err.response?.status === 400) {
-          // If already logged in, redirect to the dashboard
+        if (err.message === "LOGIN_FLOW_TIMEOUT") {
+          toast.error("Login setup timed out. Check ORY_SDK_URL / NEXT_PUBLIC_ORY_SDK_URL and restart the dev server.");
+        } else if (err.response?.status === 400) {
           window.location.href = "/dashboard";
         } else {
-          toast.error("Failed to initialize login. Please try again.");
+          toast.error("Failed to initialize login. Check .env has ORY_SDK_URL or NEXT_PUBLIC_ORY_SDK_URL for the Ory proxy.");
         }
-
       }
     };
     initFlow();
@@ -56,6 +70,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const csrfToken = flow.ui.nodes.find(node => node.attributes.name === "csrf_token")?.attributes.value;
+      if (!csrfToken) {
+        toast.error("Security token missing. Refresh the page or check Ory / cookie settings.");
+        return;
+      }
       // [CSRF] Ory requires the flow-specific csrf_token from trusted UI nodes before accepting login.
       await submitLogin(flow.id, formData, csrfToken);
       toast.success("Welcome back!");

@@ -18,14 +18,36 @@ export default function AdminLoginPage() {
   });
 
   useEffect(() => {
-    // Initialize Ory Login Flow
+    const INIT_MS = 30_000;
+    const withTimeout = (promise, ms) =>
+      Promise.race([
+        promise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("LOGIN_FLOW_TIMEOUT")), ms)
+        ),
+      ]);
+
     const initFlow = async () => {
       try {
-        const flowData = await createLoginFlow();
+        const flowData = await withTimeout(createLoginFlow(), INIT_MS);
         setFlow(flowData);
       } catch (err) {
-        console.error("Error initializing login flow:", err);
-        toast.error("Failed to initialize security flow.");
+        if (process.env.NODE_ENV === "development") {
+          console.error("Error initializing login flow:", err);
+        }
+        if (err.message === "LOGIN_FLOW_TIMEOUT") {
+          toast.error("Login setup timed out. Check ORY_SDK_URL / NEXT_PUBLIC_ORY_SDK_URL and your network, then restart the dev server.");
+        } else if (err.response?.status === 400) {
+          /**
+           * [Authentication] Ory returns 400 when an active session already exists.
+           * Redirect to dashboard rather than showing an error — the admin is already
+           * authenticated. Using replace() prevents the login page from staying in history.
+           */
+          router.replace("/dashboard");
+          return;
+        } else {
+          toast.error("Failed to initialize security flow. Set ORY_SDK_URL or NEXT_PUBLIC_ORY_SDK_URL in admin .env.local.");
+        }
       } finally {
         setInitializing(false);
       }
@@ -35,7 +57,10 @@ export default function AdminLoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!flow) return;
+    if (!flow) {
+      toast.error("Login form is not ready. Refresh the page.");
+      return;
+    }
     
     setLoading(true);
     try {

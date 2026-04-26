@@ -10,12 +10,14 @@
  *     HSTS, X-Content-Type-Options, etc.) and a restrictive Content Security
  *     Policy (CSP) to prevent clickjacking, MIME sniffing, and data injection.
  *
- * [XSS / API10:2023 - Unsafe Consumption of APIs]
- *   - mongoSanitize() strips MongoDB operator characters ($, .) from all
- *     incoming request bodies, query strings, and params to prevent
- *     NoSQL injection attacks.
- *   - customSanitizer strips <script> tags and HTML angle brackets from
- *     every request body, protecting against reflected/stored XSS.
+ * [XSS / NoSQL Injection / API10:2023 - Unsafe Consumption of APIs]
+ *   - customSanitizer (sanitizer.js) replaces express-mongo-sanitize, which
+ *     is incompatible with Express 5 (req.query is a read-only getter in
+ *     Express 5; the package throws "Cannot set property query" on every
+ *     request). customSanitizer achieves equivalent protection by:
+ *       • Deleting any key starting with `$` (operator-key injection).
+ *       • Replacing `$` in string values (value-level injection).
+ *       • Stripping <script> blocks and HTML angle brackets (XSS).
  *
  * [API4:2023 - Unrestricted Resource Consumption]
  *   - express-rate-limit caps every IP at 100 requests per 15-minute window.
@@ -41,7 +43,6 @@ const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const cookieParser = require("cookie-parser");
-const mongoSanitize = require("express-mongo-sanitize");
 const slowdown = require("express-slow-down");
 const connectDB = require("./config/db");
 const customSanitizer = require("./utils/sanitizer");
@@ -73,13 +74,6 @@ app.use(helmet({
   },
   crossOriginEmbedderPolicy: false,
 }));
-
-/**
- * [SQL/NoSQL Injection - API3:2023 Broken Object Property Level Authorization]
- * express-mongo-sanitize removes MongoDB operator characters ($ and .) from
- * user-supplied inputs, preventing NoSQL injection attacks.
- */
-app.use(mongoSanitize());
 
 /**
  * Body parsers with a 50MB limit to support source code zip uploads
@@ -132,9 +126,10 @@ app.use("/api/", limiter);
 app.use("/api/", speedLimiter);
 
 /**
- * [XSS / Reliance on Untrusted Inputs]
- * Custom sanitizer middleware strips HTML tags and $ operators from all
- * request bodies, params, and query strings before any route handler runs.
+ * [NoSQL Injection / XSS / Reliance on Untrusted Inputs]
+ * customSanitizer replaces express-mongo-sanitize (incompatible with Express 5)
+ * and handles both NoSQL operator-key removal ($-prefixed keys) and XSS
+ * sanitization of all request surfaces before any route handler runs.
  */
 app.use(customSanitizer);
 

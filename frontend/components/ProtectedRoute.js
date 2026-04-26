@@ -15,16 +15,22 @@ export default function ProtectedRoute({ children }) {
       try {
         const res = await getMe();
         if (res.success) {
+          /**
+           * [Authorization / RBAC] Admin users belong in the dedicated admin panel.
+           * Redirecting to the admin URL (not back to /login) prevents an infinite
+           * bounce loop: /login sees an active Ory session and immediately pushes
+           * to /dashboard, which would send admins back to /login indefinitely.
+           */
           if (res.data && res.data.role === "admin") {
-             router.push("/login");
+            window.location.href = process.env.NEXT_PUBLIC_ADMIN_URL || "http://localhost:3001";
           } else {
             setIsAuthenticated(true);
           }
         } else {
-          router.push("/login");
+          router.replace("/login");
         }
-      } catch (err) {
-        router.push("/login");
+      } catch {
+        router.replace("/login");
       } finally {
         setLoading(false);
       }
