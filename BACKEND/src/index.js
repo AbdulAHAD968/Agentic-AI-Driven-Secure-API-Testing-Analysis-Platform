@@ -16,7 +16,9 @@ connectDB();
 
 const app = express();
 
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+
 app.use(cookieParser());
 
 
@@ -63,6 +65,14 @@ app.get("/", (req, res) => {
 });
 
 app.use((err, req, res, next) => {
+  // Handle multer file size errors cleanly
+  if (err.code === "LIMIT_FILE_SIZE") {
+    return res.status(413).json({
+      success: false,
+      message: "File too large. Maximum allowed upload size is 50MB.",
+    });
+  }
+
   if (process.env.NODE_ENV !== "development") {
     console.error(err.message);
   } else {
