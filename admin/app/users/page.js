@@ -5,8 +5,8 @@ import AdminLayoutWrapper from "@/components/AdminLayoutWrapper";
 import { getUsers, updateUser, deleteUser } from "@/services/adminService";
 import ConfirmModal from "@/components/ConfirmModal";
 import { toast } from "react-hot-toast";
-import { 
-  Search, Filter, MoreVertical, Trash2, 
+import {
+  Search, Filter, MoreVertical, Trash2,
   UserCheck, UserX, Shield, Mail, Calendar, User
 } from "lucide-react";
 
@@ -16,7 +16,7 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  
+
   const [deleteModal, setDeleteModal] = useState({ open: false, id: null, loading: false });
 
   useEffect(() => {
@@ -26,8 +26,8 @@ export default function UserManagement() {
   useEffect(() => {
     const term = search.toLowerCase();
     setFilteredUsers(
-      users.filter(u => 
-        u.name.toLowerCase().includes(term) || 
+      users.filter(u =>
+        u.name.toLowerCase().includes(term) ||
         u.email.toLowerCase().includes(term)
       )
     );
@@ -46,7 +46,7 @@ export default function UserManagement() {
 
   const handleStatusToggle = async (user) => {
     try {
-      const newStatus = !user.isEmailVerified; 
+      const newStatus = !user.isEmailVerified;
       await updateUser(user._id, { isEmailVerified: newStatus });
       toast.success(`User updated.`);
       fetchUsers();
@@ -86,13 +86,13 @@ export default function UserManagement() {
           <h1 className="text-4xl mb-2">User Directory</h1>
           <p className="text-olive-gray font-sans">Manage permissions and oversee account statuses.</p>
         </div>
-        
+
         <div className="flex gap-4">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-gray" />
-            <input 
-              type="text" 
-              placeholder="Filter by name or email..." 
+            <input
+              type="text"
+              placeholder="Filter by name or email..."
               className="bg-ivory border border-border-cream rounded-xl pl-12 pr-4 py-2.5 text-sm w-64 outline-none focus:ring-2 focus:ring-terracotta/10"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -131,25 +131,23 @@ export default function UserManagement() {
                     </div>
                   </td>
                   <td className="px-8 py-5">
-                    <button 
+                    <button
                       onClick={() => handleRoleToggle(u)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                        u.role === "admin" 
-                          ? "bg-terracotta/10 border-terracotta/20 text-terracotta" 
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${u.role === "admin"
+                          ? "bg-terracotta/10 border-terracotta/20 text-terracotta"
                           : "bg-warm-sand/20 border-border-cream text-stone-gray"
-                      }`}
+                        }`}
                     >
                       <Shield className="w-3 h-3" /> {u.role}
                     </button>
                   </td>
                   <td className="px-8 py-5">
-                    <button 
+                    <button
                       onClick={() => handleStatusToggle(u)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                        u.isEmailVerified 
-                          ? "bg-green-50 border-green-100 text-green-600" 
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${u.isEmailVerified
+                          ? "bg-green-50 border-green-100 text-green-600"
                           : "bg-red-50 border-red-100 text-red-600"
-                      }`}
+                        }`}
                     >
                       {u.isEmailVerified ? <UserCheck className="w-3 h-3" /> : <UserX className="w-3 h-3" />}
                       {u.isEmailVerified ? "Verified" : "Pending"}
@@ -163,7 +161,7 @@ export default function UserManagement() {
                   </td>
                   <td className="px-8 py-5 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
+                      <button
                         onClick={() => setDeleteModal({ open: true, id: u._id, loading: false })}
                         className="p-2 text-stone-gray hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                         title="Delete User"
@@ -179,7 +177,7 @@ export default function UserManagement() {
               ))}
             </tbody>
           </table>
-          
+
           {filteredUsers.length === 0 && (
             <div className="py-20 text-center">
               <div className="w-16 h-16 bg-warm-sand/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -191,7 +189,7 @@ export default function UserManagement() {
         </div>
       </div>
 
-      <ConfirmModal 
+      <ConfirmModal
         isOpen={deleteModal.open}
         onClose={() => setDeleteModal({ open: false, id: null, loading: false })}
         onConfirm={handleDelete}
@@ -202,3 +200,4 @@ export default function UserManagement() {
     </AdminLayoutWrapper>
   );
 }
+//test
