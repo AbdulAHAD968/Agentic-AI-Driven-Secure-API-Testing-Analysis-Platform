@@ -1,19 +1,25 @@
 const OpenAI = require("openai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Vulnerability = require("../models/Vulnerability");
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 
 exports.runSAST = async (project, codeContent) => {
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: `You are a senior security researcher and SAST tool engine. 
+    const openaiKey = process.env.OPENAI_API_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY;
+
+    let useOpenAI = false;
+    
+    if (openaiKey && !openaiKey.startsWith("sk-abcd")) {
+      useOpenAI = true;
+    }
+
+    if (!useOpenAI && !geminiKey) {
+      throw new Error("No valid OPENAI_API_KEY or GEMINI_API_KEY provided in .env");
+    }
+
+    let findingsData = [];
+
+    const systemPrompt = `You are a senior security researcher and SAST tool engine. 
           Analyze the provided backend source code for security vulnerabilities.
           
           MANDATORY JSON OUTPUT FORMAT:
@@ -34,18 +40,35 @@ exports.runSAST = async (project, codeContent) => {
           1. Focus on OWASP API Security Top 10.
           2. Be precise about 'location' (filename and line).
           3. If no vulnerabilities are found, return an empty array for "vulnerabilities".
-          4. Do NOT include any markdown or text outside the JSON object.`,
-        },
-        {
-          role: "user",
-          content: `Project: ${project.name}\nDescription: ${project.description}\n\n### SOURCE CODE TO ANALYZE:\n${codeContent}`,
-        },
-      ],
-      response_format: { type: "json_object" },
-    });
+          4. Do NOT include any markdown or text outside the JSON object.`;
 
-    const result = JSON.parse(response.choices[0].message.content);
-    const findingsData = result.vulnerabilities || [];
+    const userPrompt = `Project: ${project.name}\nDescription: ${project.description}\n\n### SOURCE CODE TO ANALYZE:\n${codeContent}`;
+
+    if (useOpenAI) {
+      console.log("Using OpenAI for SAST scan...");
+      const openai = new OpenAI({ apiKey: openaiKey });
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { type: "json_object" },
+      });
+      const result = JSON.parse(response.choices[0].message.content);
+      findingsData = result.vulnerabilities || [];
+    } else {
+      console.log("Using Gemini for SAST scan...");
+      const genAI = new GoogleGenerativeAI(geminiKey);
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        generationConfig: { responseMimeType: "application/json" }
+      });
+      const result = await model.generateContent(systemPrompt + "\n\n" + userPrompt);
+      const jsonText = result.response.text();
+      const parsed = JSON.parse(jsonText);
+      findingsData = parsed.vulnerabilities || [];
+    }
 
     const normalizeSeverity = (s) => {
       const severity = String(s || "").toLowerCase();
@@ -76,6 +99,6 @@ exports.runSAST = async (project, codeContent) => {
     return findings;
   } catch (err) {
     console.error("AI SAST Error:", err);
-    throw new Error("Failed to run AI SAST analysis");
+    throw new Error("Failed to run AI SAST analysis: " + err.message);
   }
 };

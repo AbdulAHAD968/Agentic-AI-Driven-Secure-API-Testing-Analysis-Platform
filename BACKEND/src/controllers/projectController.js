@@ -38,14 +38,24 @@ exports.createProject = async (req, res) => {
     });
 
     
-    fs.unlinkSync(req.file.path);
+    try {
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+    } catch (cleanupErr) {
+      console.warn("Could not delete temp file, but project was saved:", cleanupErr.message);
+    }
 
     res.status(201).json({
       success: true,
       data: project,
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("Error creating project:", err);
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    res.status(500).json({ success: false, message: err.message, stack: err.stack });
   }
 };
 
