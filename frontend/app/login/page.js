@@ -31,12 +31,11 @@ export default function LoginPage() {
         setFlow(flowData);
       } catch (err) {
         console.error("Error initializing login flow:", err);
-        console.error("Ory response body:", JSON.stringify(err.response?.data, null, 2));
-
-        const reason = err.response?.data?.error?.reason || err.response?.data?.error?.message;
-        if (reason && /session/i.test(reason)) {
-          router.replace("/dashboard");
-          return;
+        if (err.response?.status === 400) {
+          // If already logged in, redirect to the dashboard
+          window.location.href = "/dashboard";
+        } else {
+          toast.error("Failed to initialize login. Please try again.");
         }
 
         toast.error(reason || "Failed to initialize login. Please try again.");

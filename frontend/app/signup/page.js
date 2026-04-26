@@ -26,7 +26,12 @@ export default function SignupPage() {
         setFlow(flowData);
       } catch (err) {
         console.error("Error initializing registration flow:", err);
-        toast.error("Failed to initialize registration. Please try again.");
+        if (err.response?.status === 400) {
+          // If a session already exists or the flow is stale, redirect to login or dashboard
+          window.location.href = "/login";
+        } else {
+          toast.error("Failed to initialize registration. Please try again.");
+        }
       }
     };
     initFlow();
