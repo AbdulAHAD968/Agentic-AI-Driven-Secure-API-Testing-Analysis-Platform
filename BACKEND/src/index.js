@@ -99,12 +99,16 @@ app.use(
 
 /**
  * [API4:2023 - Unrestricted Resource Consumption]
- * Rate limiting: max 100 API requests per IP per 15-minute window.
- * Returns a structured JSON error instead of crashing on overload.
+ * General rate limit: 500 requests per IP per 15-minute window.
+ * 100 was too low for normal dashboard use — each page visit triggers
+ * multiple parallel API calls (session, user profile, projects,
+ * notifications) and the 30-second notification poll compounds this.
+ * Auth routes keep their own stricter limiter (20/15 min) defined in
+ * authRoutes.js to guard against brute-force credential attacks.
  */
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 500,
   message: { success: false, message: "Too many requests from this IP, please try again after 15 minutes." },
   standardHeaders: true,
   legacyHeaders: false,

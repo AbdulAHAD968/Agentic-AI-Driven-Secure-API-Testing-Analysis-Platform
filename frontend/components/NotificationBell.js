@@ -5,42 +5,74 @@ import { Bell, Info, AlertTriangle, CheckCircle2, X } from "lucide-react";
 import { getNotifications, markAsRead } from "@/services/notificationService";
 import Link from "next/link";
 
+/**
+ * POLL_INTERVAL_MS: How often the bell re-fetches notifications while the
+ * user is on any dashboard page. 60 seconds is enough for near-real-time
+ * awareness without burning through the backend rate limit budget.
+ * [API4:2023 - Unrestricted Resource Consumption]
+ */
+const POLL_INTERVAL_MS = 60_000;
+
 export default function NotificationBell() {
   const [notifications, setNotifications] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const audioRef = useRef(null);
-  
-  
+  /**
+   * rateLimitedUntil: timestamp (ms) after which polling may resume.
+   * When the backend returns 429, we double the normal poll interval before
+   * retrying so a rate-limit spike does not kick off an infinite
+   * login/dashboard redirect loop.
+   * [API4:2023 - Unrestricted Resource Consumption]
+   */
+  const rateLimitedUntil = useRef(0);
+
   const bellSound = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
 
   useEffect(() => {
     fetchNotifications();
-    
-    const interval = setInterval(fetchNotifications, 30000);
+
+    const interval = setInterval(fetchNotifications, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, []);
 
   const fetchNotifications = async () => {
+    /**
+     * [API4:2023 - Unrestricted Resource Consumption]
+     * Skip the fetch if we are still inside a 429 back-off window.
+     */
+    if (Date.now() < rateLimitedUntil.current) return;
+
     try {
       const res = await getNotifications();
-      let user = JSON.parse(localStorage.getItem("user") || "null");
-      
+      const user = JSON.parse(localStorage.getItem("user") || "null");
+
       if (!user) return;
 
       const newNotifications = res.data;
       const count = newNotifications.filter(n => !n.readBy.includes(user._id)).length;
-      
+
       if (count > unreadCount && unreadCount !== 0) {
         if (audioRef.current) {
           audioRef.current.play().catch(() => {});
         }
       }
-      
+
       setNotifications(newNotifications);
       setUnreadCount(count);
     } catch (err) {
-      console.error("Notif fetch failed", err);
+      if (err?.response?.status === 429) {
+        /**
+         * [API4:2023 - Unrestricted Resource Consumption]
+         * Back off for 2× the normal poll interval when rate-limited so
+         * repeated retries do not exhaust the shared rate-limit budget and
+         * prevent other critical calls (getMe, session checks) from succeeding.
+         */
+        rateLimitedUntil.current = Date.now() + POLL_INTERVAL_MS * 2;
+      }
+      if (process.env.NODE_ENV === "development") {
+        console.error("Notif fetch failed", err);
+      }
     }
   };
 

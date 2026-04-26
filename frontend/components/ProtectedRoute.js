@@ -29,8 +29,24 @@ export default function ProtectedRoute({ children }) {
         } else {
           router.replace("/login");
         }
-      } catch {
-        router.replace("/login");
+      } catch (err) {
+        /**
+         * [Error Handling / API4:2023 - Unrestricted Resource Consumption]
+         * Only redirect to /login for genuine auth failures (401 Unauthorized,
+         * 403 Forbidden). Transient errors — rate limiting (429), server errors
+         * (5xx), or network timeouts — must NOT redirect, otherwise a temporary
+         * spike in API traffic causes an infinite login/dashboard bounce loop:
+         * ProtectedRoute → 429 → /login → active Ory session → /dashboard →
+         * ProtectedRoute → 429 → /login → ...
+         */
+        const status = err?.response?.status;
+        if (status === 401 || status === 403) {
+          router.replace("/login");
+        } else {
+          // Transient error — leave the user where they are; they are still
+          // authenticated via Ory; the backend will recover momentarily.
+          setIsAuthenticated(true);
+        }
       } finally {
         setLoading(false);
       }
