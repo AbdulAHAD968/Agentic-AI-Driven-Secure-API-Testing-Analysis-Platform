@@ -122,7 +122,7 @@ exports.createProject = async (req, res) => {
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
-    res.status(500).json({ success: false, message: err.message, stack: err.stack });
+    res.status(500).json({ success: false, message: "Project could not be created. Please try again later." });
   }
 };
 
@@ -202,19 +202,32 @@ exports.triggerScan = async (req, res) => {
           for (const entry of zipEntries) {
             if (entry.isDirectory) continue;
 
-            const ext = path.extname(entry.entryName).toLowerCase();
+            const normalizedEntryName = path.posix.normalize(entry.entryName.replace(/\\/g, "/"));
+            /**
+             * [Path Traversal / Zip Slip]
+             * Even though entries are read in memory and not extracted to disk,
+             * rejecting absolute or ../ paths prevents confusing file labels from
+             * reaching the scanner prompt or audit output.
+             */
+            if (
+              normalizedEntryName.startsWith("../") ||
+              normalizedEntryName.includes("/../") ||
+              path.posix.isAbsolute(normalizedEntryName)
+            ) continue;
+
+            const ext = path.extname(normalizedEntryName).toLowerCase();
 
             // Skip dependency and version-control directories — not user code
             if (
-              entry.entryName.includes("node_modules") ||
-              entry.entryName.includes("vendor") ||
-              entry.entryName.includes(".git")
+              normalizedEntryName.includes("node_modules") ||
+              normalizedEntryName.includes("vendor") ||
+              normalizedEntryName.includes(".git")
             ) continue;
 
             if (sourceExtensions.includes(ext)) {
               const content = entry.getData().toString("utf8");
               if (totalExtractedSize + content.length < MAX_SIZE) {
-                codeContent           += `\n--- File: ${entry.entryName} ---\n${content}\n`;
+                codeContent           += `\n--- File: ${normalizedEntryName} ---\n${content}\n`;
                 totalExtractedSize    += content.length;
               } else {
                 break; // Stop before exceeding the memory budget
@@ -310,7 +323,8 @@ exports.triggerScan = async (req, res) => {
       }
     })();
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("Trigger scan failed:", err.message);
+    res.status(500).json({ success: false, message: "Security scan could not be started." });
   }
 };
 
@@ -350,7 +364,8 @@ exports.getReport = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("Get report failed:", err.message);
+    res.status(500).json({ success: false, message: "Report could not be loaded." });
   }
 };
 
@@ -385,7 +400,8 @@ exports.getProjects = async (req, res) => {
 
     res.status(200).json({ success: true, data: projectsWithSummary });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("Get projects failed:", err.message);
+    res.status(500).json({ success: false, message: "Projects could not be loaded." });
   }
 };
 
@@ -417,7 +433,8 @@ exports.deleteProject = async (req, res) => {
       message: "Project and associated findings deleted successfully",
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("Delete project failed:", err.message);
+    res.status(500).json({ success: false, message: "Project could not be deleted." });
   }
 };
 
@@ -475,6 +492,7 @@ exports.getProjectStats = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("Get project stats failed:", err.message);
+    res.status(500).json({ success: false, message: "Project statistics could not be loaded." });
   }
 };

@@ -1,11 +1,15 @@
 import axios from "axios";
 import { ory } from "../lib/ory";
 
-const API_URL = "http://localhost:5000/api/v1/admin";
-const AUTH_URL = "http://localhost:5000/api/v1/auth";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
+const API_URL = `${API_BASE_URL}/admin`;
+const AUTH_URL = `${API_BASE_URL}/auth`;
+const USER_URL = `${API_BASE_URL}/user`;
+const AUDIT_URL = `${API_BASE_URL}/audit`;
 
 const api = axios.create({
   baseURL: API_URL,
+  // [Secure Session Handling / CSRF] Admin calls use httpOnly SameSite cookies; backend still performs RBAC.
   withCredentials: true,
 });
 
@@ -65,8 +69,9 @@ export const adminLogin = async (credentials) => {
   return response.data;
 };
 
-export const adminVerify2FA = async (userId, token) => {
-  const response = await authApi.post("/login/2fa", { userId, token });
+export const adminVerify2FA = async (challengeToken, token) => {
+  // [Authentication Bypass - MFA] New backend expects a signed challenge token, not a client-chosen userId.
+  const response = await authApi.post("/login/2fa", { challengeToken, token });
   return response.data;
 };
 
@@ -78,7 +83,7 @@ export const getMe = async () => {
 
 
 export const updateProfile = async (formData) => {
-  const response = await axios.put("http://localhost:5000/api/v1/user/profile", formData, {
+  const response = await axios.put(`${USER_URL}/profile`, formData, {
     withCredentials: true,
     headers: { "Content-Type": "multipart/form-data" }
   });
@@ -86,7 +91,7 @@ export const updateProfile = async (formData) => {
 };
 
 export const updatePassword = async (passData) => {
-  const response = await axios.put("http://localhost:5000/api/v1/user/password", passData, {
+  const response = await axios.put(`${USER_URL}/password`, passData, {
     withCredentials: true
   });
   return response.data;
@@ -94,21 +99,21 @@ export const updatePassword = async (passData) => {
 
 
 export const setup2FA = async () => {
-    const response = await axios.post("http://localhost:5000/api/v1/auth/setup-2fa", {}, {
+    const response = await axios.post(`${AUTH_URL}/setup-2fa`, {}, {
         withCredentials: true
     });
     return response.data;
 };
 
 export const activate2FA = async (token) => {
-    const response = await axios.post("http://localhost:5000/api/v1/auth/activate-2fa", { token }, {
+    const response = await axios.post(`${AUTH_URL}/activate-2fa`, { token }, {
         withCredentials: true
     });
     return response.data;
 };
 
 export const disable2FA = async (password) => {
-    const response = await axios.post("http://localhost:5000/api/v1/auth/disable-2fa", { password }, {
+    const response = await axios.post(`${AUTH_URL}/disable-2fa`, { password }, {
         withCredentials: true
     });
     return response.data;
@@ -122,7 +127,7 @@ export const getStats = async () => {
 
 export const getAuditStats = async () => {
   const customApi = axios.create({
-    baseURL: "http://localhost:5000/api/v1/audit",
+    baseURL: AUDIT_URL,
     withCredentials: true,
   });
   const response = await customApi.get("/stats");
@@ -204,7 +209,11 @@ export const deleteNotification = async (id) => {
 };
 
 export const purgeNotifications = async (days) => {
-    const response = await api.delete(`/notifications/purge?days=${days}`);
+    // [Input Validation] Client-side allowlist mirrors backend purge validation for destructive admin action.
+    if (days !== "all" && !/^\d+$/.test(String(days))) {
+      throw new Error("Invalid purge window");
+    }
+    const response = await api.delete(`/notifications/purge?days=${encodeURIComponent(days)}`);
     return response.data;
 };
 

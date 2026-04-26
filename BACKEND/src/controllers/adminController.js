@@ -12,7 +12,7 @@
  *     users cannot reach any of these endpoints.
  *
  * [API3:2023 - Broken Object Property Level Authorization / Mass Assignment]
- *   - updateUser whitelists only { name, email, active, role } — req.body
+ *   - updateUser whitelists only { name, email, active, isEmailVerified, role } — req.body
  *     is never passed directly to findByIdAndUpdate, preventing an attacker
  *     from injecting fields like oryId, password, or loginAttempts.
  *
@@ -34,6 +34,12 @@ const Newsletter = require("../models/Newsletter");
 const Contact    = require("../models/Contact");
 const sendEmail  = require("../utils/email");
 const { contactReplyEmail } = require("../templates/emailTemplates");
+
+const sendAdminServerError = (res, context, err) => {
+  // [Error Handling] Log internal failure details server-side only; clients receive a fixed safe message.
+  console.error(`${context}:`, err.message);
+  return res.status(500).json({ success: false, message: "Admin request could not be completed." });
+};
 
 // ─── User Management ──────────────────────────────────────────────────────────
 
@@ -58,7 +64,7 @@ exports.getStats = async (req, res) => {
       data: { totalUsers, verifiedUsers, totalSubscribers, totalInquiries, newInquiries },
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendAdminServerError(res, "Get admin stats failed", err);
   }
 };
 
@@ -75,7 +81,7 @@ exports.getUsers = async (req, res) => {
     const users = await User.find().sort("-createdAt");
     res.status(200).json({ success: true, data: users });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendAdminServerError(res, "Get users failed", err);
   }
 };
 
@@ -84,7 +90,7 @@ exports.getUsers = async (req, res) => {
  *
  * [API3:2023 - Broken Object Property Level Authorization / Mass Assignment]
  * - req.body is NOT passed directly to Mongoose — only explicitly whitelisted
- *   fields (name, email, active) are extracted and used in the update.
+ *   fields (name, email, active, isEmailVerified) are extracted and used in the update.
  * - The 'role' field can only be changed by an admin (this function), and even
  *   then, only if req.body.role is explicitly provided.
  * - This prevents privilege escalation via mass assignment (e.g., setting
@@ -98,9 +104,10 @@ exports.updateUser = async (req, res) => {
   try {
     // [Mass Assignment] Whitelist — only these fields may be updated via this endpoint
     const allowedFields = {
-      name:   req.body.name,
-      email:  req.body.email,
-      active: req.body.active,
+      name:            req.body.name,
+      email:           req.body.email,
+      active:          req.body.active,
+      isEmailVerified: req.body.isEmailVerified,
     };
 
     // [API5:2023] Role changes are intentional admin actions — include only if provided
@@ -117,7 +124,7 @@ exports.updateUser = async (req, res) => {
 
     res.status(200).json({ success: true, data: user });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendAdminServerError(res, "Update user failed", err);
   }
 };
 
@@ -135,7 +142,7 @@ exports.deleteUser = async (req, res) => {
     await User.findByIdAndDelete(req.params.id);
     res.status(200).json({ success: true, message: "User deleted" });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendAdminServerError(res, "Delete user failed", err);
   }
 };
 
@@ -151,7 +158,7 @@ exports.getSubscribers = async (req, res) => {
     const subscribers = await Newsletter.find().sort("-subscribedAt");
     res.status(200).json({ success: true, data: subscribers });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendAdminServerError(res, "Get subscribers failed", err);
   }
 };
 
@@ -197,7 +204,7 @@ exports.sendNewsletter = async (req, res) => {
       message: `Newsletter sent to ${subscribers.length} subscribers.`,
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendAdminServerError(res, "Send newsletter failed", err);
   }
 };
 
@@ -213,7 +220,7 @@ exports.getInquiries = async (req, res) => {
     const inquiries = await Contact.find().sort("-createdAt");
     res.status(200).json({ success: true, data: inquiries });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendAdminServerError(res, "Get inquiries failed", err);
   }
 };
 
@@ -238,7 +245,7 @@ exports.updateInquiry = async (req, res) => {
     );
     res.status(200).json({ success: true, data: inquiry });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendAdminServerError(res, "Update inquiry failed", err);
   }
 };
 
@@ -253,7 +260,7 @@ exports.deleteInquiry = async (req, res) => {
     await Contact.findByIdAndDelete(req.params.id);
     res.status(200).json({ success: true, message: "Inquiry deleted" });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendAdminServerError(res, "Delete inquiry failed", err);
   }
 };
 
@@ -289,7 +296,7 @@ exports.replyToInquiry = async (req, res) => {
 
     res.status(200).json({ success: true, message: "Reply sent successfully" });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendAdminServerError(res, "Reply to inquiry failed", err);
   }
 };
 
@@ -315,7 +322,7 @@ exports.getAuditLogs = async (req, res) => {
 
     res.status(200).json({ success: true, data: logs });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendAdminServerError(res, "Get audit logs failed", err);
   }
 };
 
@@ -350,7 +357,7 @@ exports.getAuditStats = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendAdminServerError(res, "Get audit stats failed", err);
   }
 };
 
@@ -381,7 +388,7 @@ exports.deleteAuditLog = async (req, res) => {
     await log.deleteOne();
     res.status(200).json({ success: true, message: "Log entry deleted" });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendAdminServerError(res, "Delete audit log failed", err);
   }
 };
 
@@ -407,6 +414,11 @@ exports.purgeAuditLogs = async (req, res) => {
 
     let query = req.user.role === "admin" ? {} : { user: req.user.id };
 
+    if (days === "all" && req.user.role !== "admin") {
+      // [Authorization] Non-admin callers can never request platform-wide audit deletion.
+      return res.status(403).json({ success: false, message: "Forbidden" });
+    }
+
     if (days && days !== "all") {
       // [Integer Overflow / Input Validation] Strict non-negative integer check
       const parsedDays = parseInt(days, 10);
@@ -428,7 +440,7 @@ exports.purgeAuditLogs = async (req, res) => {
       message: `${result.deletedCount} logs purged successfully`,
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendAdminServerError(res, "Purge audit logs failed", err);
   }
 };
 
@@ -469,7 +481,7 @@ exports.getAllProjects = async (req, res) => {
 
     res.status(200).json({ success: true, data: projectsWithSummary });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendAdminServerError(res, "Get all projects failed", err);
   }
 };
 
@@ -496,6 +508,6 @@ exports.getAllVulnerabilities = async (req, res) => {
 
     res.status(200).json({ success: true, data: vulnerabilities });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendAdminServerError(res, "Get all vulnerabilities failed", err);
   }
 };

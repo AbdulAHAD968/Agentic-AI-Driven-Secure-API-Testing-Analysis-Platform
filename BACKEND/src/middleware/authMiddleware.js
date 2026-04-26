@@ -144,6 +144,7 @@ exports.protect = async (req, res, next) => {
  * - Must be called after protect() (which populates req.user).
  * - Returns 403 if the authenticated user's role is not in the allowed list.
  * - Prevents regular users from reaching admin-only endpoints server-side.
+ * - Uses a generic 403 message so the current role is not disclosed.
  *
  * @param {...string} roles - Allowed role names (e.g., "admin", "user")
  * @returns {Function}      - Express middleware function
@@ -154,7 +155,7 @@ exports.authorize = (...roles) => {
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        message: `User role ${req.user.role} is not authorized to access this route`,
+        message: "Forbidden",
       });
     }
     next();

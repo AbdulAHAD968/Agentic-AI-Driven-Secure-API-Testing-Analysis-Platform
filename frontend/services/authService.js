@@ -1,10 +1,12 @@
 import axios from "axios";
 import { ory } from "../lib/ory";
 
-const API_URL = "http://localhost:5000/api/v1/auth";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
+const API_URL = `${API_BASE_URL}/auth`;
 
 const api = axios.create({
   baseURL: API_URL,
+  // [CSRF / Secure Session Handling] Sends only httpOnly SameSite cookies managed by the backend/Ory proxy.
   withCredentials: true,
 });
 
@@ -102,8 +104,9 @@ export const login = async (userData) => {
   return response.data;
 };
 
-export const verifyLogin2FA = async (userId, token) => {
-  const response = await api.post("/login/2fa", { userId, token });
+export const verifyLogin2FA = async (challengeToken, token) => {
+  // [Authentication Bypass - MFA] challengeToken is signed by the server after password auth; the client never chooses userId.
+  const response = await api.post("/login/2fa", { challengeToken, token });
   return response.data;
 };
 
@@ -124,5 +127,27 @@ export const activate2FA = async (token) => {
 
 export const disable2FA = async (password) => {
   const response = await api.post("/disable-2fa", { password });
+  return response.data;
+};
+
+export const forgotPassword = async (email) => {
+  // [Account Enumeration] Backend returns a generic success message whether the email exists or not.
+  const response = await api.post("/forgot-password", { email });
+  return response.data;
+};
+
+export const resetPassword = async (token, password) => {
+  // [Token Security] Reset token is sent once over HTTPS and stored only as a hash server-side.
+  const response = await api.post("/reset-password", { token, password });
+  return response.data;
+};
+
+export const verifyEmail = async (token) => {
+  const response = await api.post("/verify-email", { token });
+  return response.data;
+};
+
+export const resendVerification = async (email) => {
+  const response = await api.post("/resend-verification", { email });
   return response.data;
 };

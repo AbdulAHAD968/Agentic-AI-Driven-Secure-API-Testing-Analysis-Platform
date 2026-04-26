@@ -42,6 +42,27 @@ const { verificationEmail, resetPasswordEmail, twoFactorEmail } = require("../te
 const speakeasy = require("speakeasy");
 const qrcode    = require("qrcode");
 
+const MFA_CHALLENGE_PURPOSE = "login-2fa";
+const MFA_CHALLENGE_TTL = "5m";
+const GENERIC_RESET_MESSAGE = "If an account exists for that email, a password reset link will be sent.";
+
+/**
+ * requireJwtSecret: fail closed when token signing material is absent or weak.
+ *
+ * [API2:2023 - Broken Authentication / Use of Broken Cryptographic Algorithms]
+ * A missing or short JWT secret makes signed sessions forgeable. The secret is
+ * read only from environment variables so it is never hardcoded in source.
+ *
+ * @returns {string} Strong JWT signing secret from environment
+ */
+const requireJwtSecret = () => {
+  const secret = process.env.JWT_SECRET_KEY;
+  if (!secret || secret.length < 32) {
+    throw new Error("JWT_SECRET_KEY must be set to at least 32 characters.");
+  }
+  return secret;
+};
+
 /**
  * signToken: Create a signed JWT for the given user ID.
  *
@@ -53,10 +74,27 @@ const qrcode    = require("qrcode");
  * @returns {string}  - Signed JWT string
  */
 const signToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET_KEY, {
+  return jwt.sign({ id }, requireJwtSecret(), {
     expiresIn: "30d",
   });
 };
+
+/**
+ * signMfaChallenge: Issue a short-lived, purpose-bound token for 2FA login.
+ *
+ * [Authentication Bypass - MFA]
+ * This prevents clients from choosing an arbitrary userId during the 2FA step.
+ * The verified password step signs the user id into this token, and
+ * verifyLogin2FA accepts only this signed challenge.
+ *
+ * @param {Object} user - User that already passed password authentication
+ * @returns {string} 5-minute signed MFA challenge token
+ */
+const signMfaChallenge = (user) => jwt.sign(
+  { id: user._id.toString(), purpose: MFA_CHALLENGE_PURPOSE },
+  requireJwtSecret(),
+  { expiresIn: MFA_CHALLENGE_TTL }
+);
 
 /**
  * sendTokenResponse: Issue a JWT via a secure httpOnly cookie and JSON body.
@@ -77,12 +115,12 @@ const signToken = (id) => {
  */
 const sendTokenResponse = (user, statusCode, res, is2faRequired = false) => {
   if (is2faRequired) {
-    // [Authentication Bypass - MFA] Inform client that 2FA step is required
+    // [Authentication Bypass - MFA] Signed challenge binds the TOTP step to the user who passed password auth.
     return res.status(statusCode).json({
       success: true,
       message: "2FA Required",
       twoFactorRequired: true,
-      userId: user._id,
+      challengeToken: signMfaChallenge(user),
     });
   }
 
@@ -127,7 +165,8 @@ exports.register = async (req, res, next) => {
     // [Input Validation] Reject duplicate registrations
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ success: false, message: "Email already registered" });
+      // [Authentication Bypass / Error Handling] Generic response avoids account enumeration during registration.
+      return res.status(400).json({ success: false, message: "Registration could not be completed with the provided details." });
     }
 
     // [The Hidden Dangers in Password Handling] Password is hashed by User pre-save hook
@@ -158,7 +197,8 @@ exports.register = async (req, res, next) => {
       return res.status(500).json({ success: false, message: "Email could not be sent. Please try again later." });
     }
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("Registration failed:", err.message);
+    res.status(500).json({ success: false, message: "Registration could not be completed. Please try again later." });
   }
 };
 
@@ -194,7 +234,8 @@ exports.verifyEmail = async (req, res, next) => {
 
     res.status(200).json({ success: true, message: "Email verified successfully. You can now log in." });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("Email verification failed:", err.message);
+    res.status(500).json({ success: false, message: "Email verification could not be completed." });
   }
 };
 
@@ -213,7 +254,8 @@ exports.resendVerification = async (req, res, next) => {
     const user = await User.findOne({ email: req.body.email });
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      // [Error Handling / Authentication Bypass] Generic response prevents email enumeration.
+      return res.status(200).json({ success: true, message: "If the email is registered and unverified, a verification link will be sent." });
     }
 
     if (user.isEmailVerified) {
@@ -234,7 +276,8 @@ exports.resendVerification = async (req, res, next) => {
 
     res.status(200).json({ success: true, message: "Verification email resent." });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("Resend verification failed:", err.message);
+    res.status(500).json({ success: false, message: "Verification email could not be sent." });
   }
 };
 
@@ -321,7 +364,8 @@ exports.login = async (req, res, next) => {
 
     sendTokenResponse(user, 200, res);
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("Login failed:", err.message);
+    res.status(500).json({ success: false, message: "Login could not be completed. Please try again later." });
   }
 };
 
@@ -329,21 +373,37 @@ exports.login = async (req, res, next) => {
  * verifyLogin2FA: Complete login by verifying the TOTP code.
  *
  * [Authentication Bypass - MFA]
+ * - The signed challenge token proves this user already passed password auth.
  * - The TOTP code is verified against the user's stored secret using
  *   speakeasy with time-based window tolerance.
  * - Token is only issued after successful TOTP verification.
  *
- * @param {Object} req.body - { userId, token }
+ * @param {Object} req.body - { challengeToken, token }
  * @returns {Object} 200 with JWT or 401 invalid code
  */
 exports.verifyLogin2FA = async (req, res, next) => {
   try {
-    const { userId, token } = req.body;
+    const { challengeToken, token } = req.body;
 
-    const user = await User.findById(userId).select("+twoFactorSecret");
+    if (!challengeToken || !token) {
+      return res.status(400).json({ success: false, message: "Authentication code is required" });
+    }
+
+    let challenge;
+    try {
+      challenge = jwt.verify(challengeToken, requireJwtSecret());
+    } catch (err) {
+      return res.status(401).json({ success: false, message: "Invalid or expired 2FA challenge" });
+    }
+
+    if (challenge.purpose !== MFA_CHALLENGE_PURPOSE) {
+      return res.status(401).json({ success: false, message: "Invalid or expired 2FA challenge" });
+    }
+
+    const user = await User.findById(challenge.id).select("+twoFactorSecret");
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res.status(401).json({ success: false, message: "Invalid or expired 2FA challenge" });
     }
 
     // [Authentication Bypass - MFA] TOTP verification via speakeasy
@@ -363,7 +423,8 @@ exports.verifyLogin2FA = async (req, res, next) => {
     // [Token Security] Issue JWT only after both password and TOTP are validated
     sendTokenResponse(user, 200, res);
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("2FA verification failed:", err.message);
+    res.status(500).json({ success: false, message: "2FA verification could not be completed." });
   }
 };
 
@@ -386,7 +447,8 @@ exports.forgotPassword = async (req, res, next) => {
     const user = await User.findOne({ email: req.body.email });
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found with that email" });
+      // [Error Handling / Authentication Bypass] Same response for existing and non-existing emails prevents account enumeration.
+      return res.status(200).json({ success: true, message: GENERIC_RESET_MESSAGE });
     }
 
     const resetToken = user.createPasswordResetToken();
@@ -401,7 +463,7 @@ exports.forgotPassword = async (req, res, next) => {
         html:    resetPasswordEmail(resetUrl),
       });
 
-      res.status(200).json({ success: true, message: "Token sent to email" });
+      res.status(200).json({ success: true, message: GENERIC_RESET_MESSAGE });
     } catch (err) {
       // [Error Handling] Clear tokens so the broken link cannot be reused
       user.resetPasswordToken  = undefined;
@@ -410,7 +472,8 @@ exports.forgotPassword = async (req, res, next) => {
       return res.status(500).json({ success: false, message: "Email could not be sent" });
     }
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("Forgot password failed:", err.message);
+    res.status(500).json({ success: false, message: "Password reset could not be started." });
   }
 };
 
@@ -450,7 +513,8 @@ exports.resetPassword = async (req, res, next) => {
 
     res.status(200).json({ success: true, message: "Password reset successful" });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("Password reset failed:", err.message);
+    res.status(500).json({ success: false, message: "Password reset could not be completed." });
   }
 };
 
@@ -484,7 +548,8 @@ exports.setup2FA = async (req, res, next) => {
       secret: secret.base32,
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("2FA setup failed:", err.message);
+    res.status(500).json({ success: false, message: "2FA setup could not be completed." });
   }
 };
 
@@ -521,7 +586,8 @@ exports.activate2FA = async (req, res, next) => {
 
     res.status(200).json({ success: true, message: "Two-Factor Authentication activated successfully." });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("2FA activation failed:", err.message);
+    res.status(500).json({ success: false, message: "2FA activation could not be completed." });
   }
 };
 
@@ -551,7 +617,8 @@ exports.disable2FA = async (req, res, next) => {
 
     res.status(200).json({ success: true, message: "Two-Factor Authentication disabled" });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("2FA disable failed:", err.message);
+    res.status(500).json({ success: false, message: "2FA could not be disabled." });
   }
 };
 

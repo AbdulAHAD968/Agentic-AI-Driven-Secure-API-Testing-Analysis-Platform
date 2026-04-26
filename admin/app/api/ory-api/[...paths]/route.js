@@ -27,7 +27,6 @@ const FORWARDED_REQUEST_HEADERS = [
   "accept-charset",
   "accept-encoding",
   "accept-language",
-  "authorization",
   "cache-control",
   "content-type",
   "cookie",
@@ -45,7 +44,12 @@ function rewriteSetCookie(cookieHeader) {
 async function handleProxy(request, params) {
   const { paths } = await params;
   const path = paths.join("/");
-  const sdkUrl = (process.env.NEXT_PUBLIC_ORY_SDK_URL || "https://suspicious-agnesi-frtp7mro6t.projects.oryapis.com").replace(/\/$/, "");
+  const configuredSdkUrl = process.env.NEXT_PUBLIC_ORY_SDK_URL;
+  if (!configuredSdkUrl) {
+    // [API8:2023 - Security Misconfiguration] Admin auth must not fall back to a hardcoded cloud tenant.
+    return NextResponse.json({ error: "Authentication service is not configured." }, { status: 500 });
+  }
+  const sdkUrl = configuredSdkUrl.replace(/\/$/, "");
   const url = `${sdkUrl}/${path}${request.nextUrl.search}`;
 
   const requestHeaders = new Headers();
@@ -71,7 +75,7 @@ async function handleProxy(request, params) {
     const responseHeaders = new Headers();
     response.headers.forEach((value, key) => {
       const k = key.toLowerCase();
-      if (k === "content-encoding" || k === "transfer-encoding" || k === "content-length" || k === "set-cookie") {
+      if (k === "content-encoding" || k === "transfer-encoding" || k === "content-length" || k === "set-cookie" || k === "location") {
         return;
       }
       responseHeaders.append(key, value);
@@ -84,6 +88,7 @@ async function handleProxy(request, params) {
 
     const location = response.headers.get("location");
     if (location) {
+      // [Open Redirect] Forward only trusted Ory/relative redirects, never arbitrary upstream Location values.
       if (location.startsWith(sdkUrl)) {
         responseHeaders.set("location", location.replace(sdkUrl, PROXY_BASE));
       } else if (location.startsWith("/self-service/") || location.startsWith("/ui/")) {
@@ -105,6 +110,7 @@ async function handleProxy(request, params) {
     });
   } catch (error) {
     console.error("Admin Ory Proxy Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    // [Error Handling] Hide upstream exception text from browsers.
+    return NextResponse.json({ error: "Authentication proxy error." }, { status: 500 });
   }
 }

@@ -21,7 +21,20 @@
  *     request body are also sanitized, not just top-level fields.
  *   - Non-string values (numbers, booleans) are passed through unchanged
  *     to avoid corrupting legitimate data types.
+ *   - Password and token values are not rewritten character-by-character;
+ *     this preserves authentication secrets while mongoSanitize handles
+ *     dangerous object keys/operators.
  */
+
+const SECRET_VALUE_KEYS = new Set([
+  "password",
+  "currentPassword",
+  "newPassword",
+  "confirmPassword",
+  "token",
+  "csrf_token",
+  "challengeToken",
+]);
 
 /**
  * sanitizeValue: Sanitize a single string value.
@@ -36,8 +49,19 @@
  * @param {*} val - The value to sanitize (only strings are mutated)
  * @returns {*}   - Sanitized string, or the original value if not a string
  */
-const sanitizeValue = (val) => {
+const sanitizeValue = (val, key = "") => {
   if (typeof val !== "string") return val;
+
+  if (SECRET_VALUE_KEYS.has(key)) {
+    /**
+     * [Authentication Security]
+     * Do not alter passwords, CSRF tokens, reset tokens, or MFA challenges:
+     * changing `$`, `<`, or `>` inside secrets causes false login failures and
+     * can invalidate cryptographically generated values. Object-key injection is
+     * still handled by express-mongo-sanitize before this middleware.
+     */
+    return val;
+  }
 
   return val
     .replace(/\$/g, "_")                                    // NoSQL injection: neutralize MongoDB operators
@@ -62,7 +86,7 @@ const deepSanitize = (obj) => {
       if (value && typeof value === "object") {
         deepSanitize(value); // Recurse for nested objects and arrays
       } else {
-        obj[key] = sanitizeValue(value);
+        obj[key] = sanitizeValue(value, key);
       }
     });
   }

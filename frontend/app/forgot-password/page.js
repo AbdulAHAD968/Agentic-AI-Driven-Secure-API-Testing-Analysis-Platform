@@ -18,10 +18,11 @@ export default function ForgotPasswordPage() {
 
     try {
       await forgotPassword(email);
-      toast.success("Reset link sent!");
+      toast.success("If an account exists for that email, you will receive a reset link.");
       setIsSuccess(true);
     } catch (err) {
-      toast.error(err.response?.data?.message || "User not found.");
+      // [Account Enumeration] Use the same user-facing message regardless of whether an email exists.
+      toast.error("If an account exists for that email, you will receive a reset link.");
     } finally {
       setLoading(false);
     }

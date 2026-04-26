@@ -9,6 +9,22 @@ import {
   Trash2, Download, Smartphone, Monitor, ChevronRight, Loader2
 } from "lucide-react";
 
+const EMPTY_PREVIEW_HTML = "<div class='flex flex-col items-center justify-center h-full opacity-20 py-20 grayscale'><p class='uppercase tracking-[0.3em] text-[10px] font-bold text-near-black'>Waiting for Transmission Content</p></div>";
+
+const sanitizePreviewHtml = (html) => {
+  /**
+   * [Cross-Site Scripting (XSS)]
+   * Preview HTML is untrusted admin input, often pasted from AI tools. Strip
+   * script blocks, inline event handlers, javascript: URLs, and iframe/object
+   * embeds before rendering with dangerouslySetInnerHTML.
+   */
+  return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/\son\w+=(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/\s(?:href|src)=("|')\s*javascript:[\s\S]*?\1/gi, "")
+    .replace(/<(iframe|object|embed)\b[^>]*>[\s\S]*?<\/\1>/gi, "");
+};
+
 export default function NewsletterManagement() {
   const [subscribers, setSubscribers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -279,7 +295,7 @@ export default function NewsletterManagement() {
                       <div className="h-full overflow-y-auto overflow-x-hidden">
                         <div 
                           className="p-6 break-words font-sans text-sm" 
-                          dangerouslySetInnerHTML={{ __html: content || "<div class='flex flex-col items-center justify-center h-full opacity-20 py-20 grayscale'><p class='uppercase tracking-[0.3em] text-[10px] font-bold text-near-black'>Waiting for Transmission Content</p></div>" }} 
+                          dangerouslySetInnerHTML={{ __html: content ? sanitizePreviewHtml(content) : EMPTY_PREVIEW_HTML }} 
                         />
                       </div>
                    </div>

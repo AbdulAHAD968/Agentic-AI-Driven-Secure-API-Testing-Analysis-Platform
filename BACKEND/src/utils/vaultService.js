@@ -23,8 +23,8 @@
  *   - The encryption key is derived from VAULT_SECRET and VAULT_SALT
  *     environment variables using scrypt — a memory-hard KDF specifically
  *     designed to resist GPU-accelerated brute-force attacks.
- *   - The salt (VAULT_SALT) is configurable via env and falls back to a
- *     development-only placeholder so production deployments must set their own.
+ *   - VAULT_SECRET and VAULT_SALT are mandatory so encrypted vault files are
+ *     never protected by predictable fallback key material.
  */
 
 const crypto = require("crypto");
@@ -38,10 +38,15 @@ const ALGORITHM = "aes-256-cbc";
  * Key is derived from VAULT_SECRET + VAULT_SALT using scrypt (32-byte output).
  * Using scrypt instead of a simple SHA hash makes brute-forcing the key
  * computationally and memory-expensive for an attacker.
- * VAULT_SALT must be set per application instance in production .env.
+ * VAULT_SECRET and VAULT_SALT must be set per application instance. Failing
+ * closed prevents the "default encryption key" misconfiguration vulnerability.
  */
-const SALT = process.env.VAULT_SALT || "topicai-dev-salt-change-in-prod";
-const KEY  = crypto.scryptSync(process.env.VAULT_SECRET || "dev-secret-key", SALT, 32);
+if (!process.env.VAULT_SECRET || !process.env.VAULT_SALT) {
+  throw new Error("VAULT_SECRET and VAULT_SALT must be configured for vault encryption.");
+}
+
+const SALT = process.env.VAULT_SALT;
+const KEY  = crypto.scryptSync(process.env.VAULT_SECRET, SALT, 32);
 
 /**
  * encrypt: Encrypt a buffer using AES-256-CBC with a random IV.

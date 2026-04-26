@@ -118,11 +118,13 @@ export default function ProjectDetailsPage({ params }) {
       vulnerabilities: data.vulnerabilities,
       exportedAt: new Date().toISOString()
     };
+    // [Path Traversal] Browser download names are sanitized to avoid path separators/control characters.
+    const safeProjectName = (data.project?.name || "project").replace(/[^a-zA-Z0-9._-]/g, "_");
     const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `Security_Report_${project.name.replace(/\s+/g, '_')}.json`;
+    link.download = `Security_Report_${safeProjectName}.json`;
     link.click();
     URL.revokeObjectURL(url);
   };

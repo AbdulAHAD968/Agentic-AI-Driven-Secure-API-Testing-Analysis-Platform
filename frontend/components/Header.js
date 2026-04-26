@@ -8,6 +8,21 @@ import { toast } from "react-hot-toast";
 import { User, Settings, LogOut, ChevronDown, ShieldCheck, Bell, Menu, X } from "lucide-react";
 import NotificationBell from "./NotificationBell";
 
+const toCachedUser = (user) => ({
+  name: user?.name || "",
+  role: user?.role || "user",
+  avatar: user?.avatar || "",
+});
+
+const safeAvatarUrl = (url) => {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" ? parsed.toString() : "";
+  } catch {
+    return "";
+  }
+};
+
 export default function Header() {
   const router = useRouter();
   // undefined = unknown (render skeleton), null = logged-out, object = logged-in.
@@ -23,7 +38,8 @@ export default function Header() {
     try {
       const cached = localStorage.getItem("user");
       if (cached) {
-        setUser(JSON.parse(cached));
+        // [Data Protection] Cache only non-sensitive display fields; auth remains in httpOnly cookies.
+        setUser(toCachedUser(JSON.parse(cached)));
       } else {
         setUser(null);
       }
@@ -46,8 +62,10 @@ export default function Header() {
     try {
       const res = await getMe();
       if (res.success) {
-        setUser(res.data);
-        localStorage.setItem("user", JSON.stringify(res.data));
+        const displayUser = toCachedUser(res.data);
+        setUser(displayUser);
+        // [XSS Impact Reduction] Avoid storing full user/API response in localStorage.
+        localStorage.setItem("user", JSON.stringify(displayUser));
       } else {
         setUser(null);
         localStorage.removeItem("user");
@@ -122,8 +140,8 @@ export default function Header() {
                   className="flex items-center gap-3 pl-4 border-l border-border-cream group"
                 >
                   <div className="w-10 h-10 rounded-full bg-warm-sand/30 border border-border-cream overflow-hidden transition-transform group-hover:scale-105">
-                    {user.avatar ? (
-                      <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                    {safeAvatarUrl(user.avatar) ? (
+                      <img src={safeAvatarUrl(user.avatar)} alt={user.name} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-terracotta font-serif font-bold">
                         {user.name.charAt(0)}

@@ -7,6 +7,15 @@ import { getMe } from "@/services/adminService";
 import AdminSidebar from "./AdminSidebar";
 import { Loader2, Bell, Search, User } from "lucide-react";
 
+const safeAvatarUrl = (url) => {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" ? parsed.toString() : "";
+  } catch {
+    return "";
+  }
+};
+
 export default function RootAdminLayout({ children }) {
   const router = useRouter();
   const [admin, setAdmin] = useState(null);
@@ -19,6 +28,7 @@ export default function RootAdminLayout({ children }) {
 
   const checkAdmin = async () => {
     try {
+      // [Authorization / RBAC] This client check is UX only; backend admin APIs still enforce protect()+authorize("admin").
       const res = await getMe();
       if (res.data.role !== "admin") {
         router.push("/login?error=unauthorized");
@@ -62,8 +72,8 @@ export default function RootAdminLayout({ children }) {
                 <p className="text-[10px] uppercase font-bold text-terracotta tracking-wider">Super Admin</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-warm-sand border border-border-cream overflow-hidden flex items-center justify-center group-hover:border-terracotta/50 transition-colors">
-                {admin?.avatar ? (
-                  <img src={admin.avatar} alt="Admin" className="w-full h-full object-cover" />
+                {safeAvatarUrl(admin?.avatar) ? (
+                  <img src={safeAvatarUrl(admin.avatar)} alt="Admin" className="w-full h-full object-cover" />
                 ) : (
                   <User className="w-5 h-5 text-stone-gray" />
                 )}

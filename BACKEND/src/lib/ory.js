@@ -17,8 +17,8 @@
  *
  * [API8:2023 - Security Misconfiguration]
  *   - No default credentials or insecure fallback behaviors are configured.
- *   - The basePath falls back to the known Ory project URL if the env var
- *     is not set, which is still a secure Ory-hosted endpoint.
+ *   - ORY_SDK_URL is mandatory; hardcoded tenant fallbacks can silently send
+ *     authentication traffic to the wrong cloud project.
  */
 
 const { Configuration, FrontendApi } = require("@ory/client");
@@ -31,9 +31,13 @@ const { Configuration, FrontendApi } = require("@ory/client");
  * ORY_SDK_URL. withCredentials: true is required so that the session cookie
  * sent by the browser is forwarded to Ory for validation.
  */
+if (!process.env.ORY_SDK_URL) {
+  throw new Error("ORY_SDK_URL must be configured for server-side Ory session verification.");
+}
+
 const ory = new FrontendApi(
   new Configuration({
-    basePath:    process.env.ORY_SDK_URL || "https://suspicious-agnesi-frtp7mro6t.projects.oryapis.com",
+    basePath:    process.env.ORY_SDK_URL,
     baseOptions: {
       withCredentials: true, // Forward session cookies to Ory for server-side validation
     },

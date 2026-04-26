@@ -10,6 +10,15 @@ import {
   UserCheck, UserX, Shield, Mail, Calendar, User
 } from "lucide-react";
 
+const safeAvatarUrl = (url) => {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" ? parsed.toString() : "";
+  } catch {
+    return "";
+  }
+};
+
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
@@ -122,7 +131,11 @@ export default function UserManagement() {
                   <td className="px-8 py-5">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-warm-sand/30 flex items-center justify-center overflow-hidden border border-border-cream">
-                        {u.avatar ? <img src={u.avatar} className="w-full h-full object-cover" /> : <User className="w-5 h-5 text-stone-gray" />}
+                        {safeAvatarUrl(u.avatar) ? (
+                          <img src={safeAvatarUrl(u.avatar)} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <User className="w-5 h-5 text-stone-gray" />
+                        )}
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-near-black">{u.name}</p>

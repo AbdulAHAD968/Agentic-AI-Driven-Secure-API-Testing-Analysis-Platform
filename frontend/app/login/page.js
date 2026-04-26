@@ -30,7 +30,9 @@ export default function LoginPage() {
         const flowData = await createLoginFlow();
         setFlow(flowData);
       } catch (err) {
-        console.error("Error initializing login flow:", err);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Error initializing login flow:", err);
+        }
         if (err.response?.status === 400) {
           // If already logged in, redirect to the dashboard
           window.location.href = "/dashboard";
@@ -38,7 +40,6 @@ export default function LoginPage() {
           toast.error("Failed to initialize login. Please try again.");
         }
 
-        toast.error(reason || "Failed to initialize login. Please try again.");
       }
     };
     initFlow();
@@ -55,12 +56,14 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const csrfToken = flow.ui.nodes.find(node => node.attributes.name === "csrf_token")?.attributes.value;
+      // [CSRF] Ory requires the flow-specific csrf_token from trusted UI nodes before accepting login.
       await submitLogin(flow.id, formData, csrfToken);
       toast.success("Welcome back!");
       router.push("/dashboard");
     } catch (err) {
-      console.error("Login error:", err);
-      console.error("Ory response body:", JSON.stringify(err.response?.data, null, 2));
+      if (process.env.NODE_ENV === "development") {
+        console.error("Login error:", err);
+      }
 
       const uiMessages = err.response?.data?.ui?.messages || [];
       const nodeMessages = (err.response?.data?.ui?.nodes || [])
